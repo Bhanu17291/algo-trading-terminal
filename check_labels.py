@@ -1,0 +1,10 @@
+import pandas as pd
+df = pd.read_csv('data/nsei_features.csv', index_col=0, parse_dates=True)
+print('Label distribution:')
+print(df['label'].value_counts())
+print()
+print('future_return stats:')
+print(df['future_return'].describe())
+print()
+print('future_return sample (first 10):')
+print(df['future_return'].head(10))

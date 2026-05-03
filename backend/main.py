@@ -20,9 +20,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── LOAD MODEL + DATA ──────────────────────────────────────────
-model     = joblib.load("../models/xgb_model.pkl")
-le        = joblib.load("../models/label_encoder.pkl")
+# ── LOAD ENSEMBLE MODELS + DATA ────────────────────────────────
+model      = joblib.load("../models/xgb_model.pkl")
+lgbm_model = joblib.load("../models/lgbm_model.pkl")
+cat_model  = joblib.load("../models/cat_model.pkl")
+le         = joblib.load("../models/label_encoder.pkl")
+FEATURES   = joblib.load("../models/features.pkl")
+weights    = joblib.load("../models/ensemble_weights.pkl")
+w_xgb      = weights['w_xgb']
+w_lgbm     = weights['w_lgbm']
+w_cat      = weights['w_cat']
+
 df        = pd.read_csv("../data/nsei_features.csv", index_col=0, parse_dates=True)
 portfolio = pd.read_csv("../data/portfolio.csv", index_col=0, parse_dates=True)
 
@@ -31,12 +39,34 @@ trades = trades.fillna("")
 trades['pnl']        = pd.to_numeric(trades['pnl'], errors='coerce').fillna(0)
 trades['confidence'] = pd.to_numeric(trades['confidence'], errors='coerce').fillna(0)
 
-FEATURES = [
-    'sma_cross', 'rsi', 'macd', 'macd_signal', 'macd_diff',
-    'bb_width', 'bb_pos', 'volume_ratio', 'day_of_week', 'month'
-]
+# ── ENSEMBLE HELPERS ───────────────────────────────────────────
+def ensemble_proba(X):
+    p1 = model.predict_proba(X)
+    p2 = lgbm_model.predict_proba(X)
+    p3 = cat_model.predict_proba(X)
+    return w_xgb * p1 + w_lgbm * p2 + w_cat * p3
 
-# Pre-compute SHAP explainer once at startup
+def ensemble_predict(X):
+    probs    = ensemble_proba(X)
+    buy_prob = probs[:, 1]  # probability of BUY (class 1)
+
+    # 2-class → 3-signal conversion
+    # BUY  when buy_prob >= 0.55
+    # SELL when buy_prob <= 0.35
+    # HOLD otherwise
+    signals = []
+    for bp in buy_prob:
+        if bp >= 0.55:
+            signals.append(1)    # BUY
+        elif bp <= 0.35:
+            signals.append(-1)   # SELL
+        else:
+            signals.append(0)    # HOLD
+
+    conf = probs.max(axis=1)
+    return np.array(signals), conf, probs
+
+# Pre-compute SHAP explainer on XGBoost only
 explainer = shap.TreeExplainer(model)
 
 # ── LIVE TRADING LOOP ──────────────────────────────────────────
@@ -56,14 +86,13 @@ def run_trading_loop():
         print(f"[{datetime.now(IST).strftime('%H:%M:%S')}] Market closed — skipping")
         return
 
-    latest    = df[FEATURES].iloc[-1:]
-    prob      = model.predict_proba(latest)[0]
-    pred      = model.predict(latest)[0]
-    signal    = le.inverse_transform([pred])[0]
-    conf      = round(float(prob.max()), 3)
-    price     = round(float(df['Close'].iloc[-1]), 2)
-    label_map = {1: "BUY", -1: "SELL", 0: "HOLD"}
-    action    = label_map.get(signal, "HOLD")
+    latest            = df[FEATURES].iloc[-1:]
+    signals, confs, _ = ensemble_predict(latest)
+    signal            = signals[0]
+    conf              = round(float(confs[0]), 3)
+    price             = round(float(df['Close'].iloc[-1]), 2)
+    label_map         = {1: "BUY", -1: "SELL", 0: "HOLD"}
+    action            = label_map.get(signal, "HOLD")
 
     log = f"ML → {action} (p={conf}) | price={price} | time={datetime.now(IST).strftime('%H:%M:%S')}"
     print(log)
@@ -89,15 +118,16 @@ def root():
 
 @app.get("/signal")
 def get_latest_signal():
-    latest     = df[FEATURES].iloc[-1:]
-    prob       = model.predict_proba(latest)[0]
-    pred       = model.predict(latest)[0]
-    signal     = le.inverse_transform([pred])[0]
-    confidence = round(float(prob.max()) * 100, 2)
-    label_map  = {1: "BUY", -1: "SELL", 0: "HOLD"}
+    latest                = df[FEATURES].iloc[-1:]
+    signals, confs, probs = ensemble_predict(latest)
+    signal                = signals[0]
+    confidence            = round(float(confs[0]) * 100, 2)
+    buy_prob              = round(float(probs[0][1]) * 100, 2)
+    label_map             = {1: "BUY", -1: "SELL", 0: "HOLD"}
     return {
         "signal":     label_map.get(signal, "HOLD"),
         "confidence": confidence,
+        "buy_prob":   buy_prob,
         "date":       str(df.index[-1].date()),
         "close":      round(float(df['Close'].iloc[-1]), 2)
     }
@@ -318,14 +348,14 @@ def run_walk_forward_engine():
     from sklearn.preprocessing import LabelEncoder
     from sklearn.metrics import accuracy_score
 
-    data        = df.dropna()
-    n           = len(data)
-    min_train   = 370
-    test_size   = 125
-    windows     = []
-    all_equity  = []
-    window_num  = 1
-    cursor      = min_train
+    data       = df.dropna()
+    n          = len(data)
+    min_train  = 500
+    test_size  = 200
+    windows    = []
+    all_equity = []
+    window_num = 1
+    cursor     = min_train
 
     while cursor + test_size <= n:
         train_df = data.iloc[0:cursor]
@@ -344,28 +374,32 @@ def run_walk_forward_engine():
             n_estimators=200,
             max_depth=4,
             learning_rate=0.05,
-            use_label_encoder=False,
-            eval_metric='mlogloss',
+            eval_metric='logloss',
             random_state=42
         )
         wf_model.fit(X_train, y_train_enc)
 
-        probs   = wf_model.predict_proba(X_test)
-        preds   = wf_model.predict(X_test)
-        signals = wf_le.inverse_transform(preds)
-        accuracy = round(accuracy_score(y_test_enc, preds) * 100, 2)
+        probs    = wf_model.predict_proba(X_test)
+        buy_prob = probs[:, 1]
+        accuracy = round(accuracy_score(y_test_enc, (buy_prob >= 0.5).astype(int)) * 100, 2)
 
         capital   = 100000.0
         position  = None
         wf_trades = []
         equity    = []
-        label_map = {1: "BUY", -1: "SELL", 0: "HOLD"}
 
         for i in range(len(test_df)):
-            signal = label_map.get(int(signals[i]), "HOLD")
-            conf   = float(probs[i].max())
-            price  = float(test_df['Close'].iloc[i])
-            date   = str(test_df.index[i].date())
+            bp    = float(buy_prob[i])
+            conf  = float(probs[i].max())
+            price = float(test_df['Close'].iloc[i])
+            date  = str(test_df.index[i].date())
+
+            if bp >= 0.55:
+                signal = "BUY"
+            elif bp <= 0.35:
+                signal = "SELL"
+            else:
+                signal = "HOLD"
 
             if position is None:
                 if signal == "BUY" and conf >= 0.55:
@@ -390,7 +424,7 @@ def run_walk_forward_engine():
                 days_held = i - position["entry_idx"]
                 stop_hit  = price <= position["entry_price"] * 0.97
                 max_hold  = days_held >= 20
-                if (signal == "SELL" and conf >= 0.55) or stop_hit or max_hold:
+                if signal == "SELL" or stop_hit or max_hold:
                     pnl     = (price - position["entry_price"]) * position["qty"]
                     capital += position["qty"] * price
                     wf_trades.append({
@@ -508,18 +542,18 @@ def simulate_client_trades(confidence_threshold, position_fraction, stop_loss_pc
     position      = None
 
     for i in range(1, len(df)):
-        row       = df[FEATURES].iloc[[i]]
-        prob      = model.predict_proba(row)[0]
-        pred      = model.predict(row)[0]
-        signal    = le.inverse_transform([pred])[0]
-        conf      = float(prob.max())
-        label_map = {1: "BUY", -1: "SELL", 0: "HOLD"}
-        action    = label_map.get(signal, "HOLD")
-        price     = float(df['Close'].iloc[i])
-        date      = str(df.index[i].date())
+        row                   = df[FEATURES].iloc[[i]]
+        signals, confs, probs = ensemble_predict(row)
+        signal                = signals[0]
+        conf                  = float(confs[0])
+        buy_prob              = float(probs[0][1])
+        label_map             = {1: "BUY", -1: "SELL", 0: "HOLD"}
+        action                = label_map.get(signal, "HOLD")
+        price                 = float(df['Close'].iloc[i])
+        date                  = str(df.index[i].date())
 
         if position is None:
-            if action == "BUY" and conf >= confidence_threshold:
+            if action == "BUY" and buy_prob >= confidence_threshold:
                 invest = capital * position_fraction
                 qty    = int(invest / price)
                 if qty > 0:
@@ -543,7 +577,7 @@ def simulate_client_trades(confidence_threshold, position_fraction, stop_loss_pc
             days_held    = i - position["entry_idx"]
             stop_hit     = price <= position["entry_price"] * (1 - stop_loss_pct)
             max_hold_hit = days_held >= max_hold_days
-            should_sell  = (action == "SELL" and conf >= confidence_threshold) or stop_hit or max_hold_hit
+            should_sell  = (action == "SELL") or stop_hit or max_hold_hit
 
             if should_sell:
                 pnl       = (price - position["entry_price"]) * position["qty"]
@@ -569,14 +603,14 @@ def simulate_client_trades(confidence_threshold, position_fraction, stop_loss_pc
 @functools.lru_cache(maxsize=1)
 def get_client_data():
     quant_trades, quant_portfolio = simulate_client_trades(
-        confidence_threshold=0.45,
+        confidence_threshold=0.55,
         position_fraction=0.95,
         stop_loss_pct=0.03,
         max_hold_days=30,
         label="QUANT"
     )
     macro_trades, macro_portfolio = simulate_client_trades(
-        confidence_threshold=0.70,
+        confidence_threshold=0.65,
         position_fraction=0.60,
         stop_loss_pct=0.015,
         max_hold_days=15,
@@ -632,7 +666,7 @@ def get_clients():
             "style":   "Aggressive",
             "color":   "#ff6600",
             "profile": {
-                "confidence_threshold": "45%",
+                "confidence_threshold": "55%",
                 "position_size":        "95% of capital",
                 "stop_loss":            "3%",
                 "max_hold_days":        30
@@ -646,7 +680,7 @@ def get_clients():
             "style":   "Conservative",
             "color":   "#00aaff",
             "profile": {
-                "confidence_threshold": "70%",
+                "confidence_threshold": "65%",
                 "position_size":        "60% of capital",
                 "stop_loss":            "1.5%",
                 "max_hold_days":        15
