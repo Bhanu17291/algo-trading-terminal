@@ -1,16 +1,110 @@
-# React + Vite
+# NSEI Algo Trading Terminal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack algorithmic trading platform for the NSEI (Nifty 50) index, built with a production-grade ML ensemble and a real-time trading dashboard.
 
-Currently, two official plugins are available:
+## 🚀 Live Demo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Service | URL |
+|---|---|
+| **Dashboard (Frontend)** | [algo-trading-terminal.vercel.app](https://algo-trading-terminal.vercel.app) |
+| **API (Backend)** | [algo-trading-terminal.onrender.com](https://algo-trading-terminal.onrender.com) |
 
-## React Compiler
+> ⚠️ The backend is hosted on Render's free tier — it may take 30–50 seconds to wake up on first visit. Subsequent requests are instant.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🤖 ML Model
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Property | Detail |
+|---|---|
+| **Architecture** | Weighted ensemble — XGBoost + LightGBM + CatBoost |
+| **Features** | 27 engineered features including ATR, volatility, OBV, candlestick structure, multi-timeframe momentum, regime detection |
+| **Training Data** | 1,481 days (2020–2026) of NSEI daily OHLCV data |
+| **Label Strategy** | Dynamic volatility-based threshold, 2-class (BUY / HOLD) |
+| **Hyperparameter Tuning** | Optuna (80 trials per model) |
+| **Validation** | Time-series walk-forward cross-validation (no look-ahead bias) |
+
+---
+
+## 👥 Dual Client Engine
+
+Two simulated trading profiles running on the same ML signals:
+
+| Profile | Style | Confidence Threshold | Position Size | Stop Loss |
+|---|---|---|---|---|
+| **QUANT** | Aggressive | 55% | 95% of capital | 3% |
+| **MACRO** | Conservative | 65% | 60% of capital | 1.5% |
+
+---
+
+## 📊 Dashboard Pages (15 total)
+
+- **Dashboard** — Live signal, portfolio metrics, PnL tracker, 3-way equity curve
+- **Trade Log** — Full trade history with STRATEGY / QUANT / MACRO tabs
+- **Indicators** — RSI, MACD, Bollinger Bands, SMA overlays
+- **Psychology** — Behavioural bias detection (revenge trading, loss aversion)
+- **Market Status** — Live IST clock, market open/close detection
+- **ML Explain** — SHAP feature importance (local + global)
+- **Drawdown** — 3-way drawdown comparison vs NSEI benchmark
+- **Backtest** — Historical strategy performance
+- **Simulator** — Scale any strategy to custom capital
+- **Risk Calc** — Position sizing with QUANT/MACRO presets
+- **Heatmap** — Monthly returns heatmap
+- **Screener** — Signal screener
+- **News** — Market news feed
+- **Clients** — Full QUANT vs MACRO head-to-head comparison
+- **Walk-Forward** — Out-of-sample rolling window backtest
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **ML** | XGBoost, LightGBM, CatBoost, SHAP, Optuna |
+| **Backend** | FastAPI, APScheduler, pandas, numpy |
+| **Frontend** | React, Vite, Recharts, TailwindCSS, DaisyUI |
+| **Data** | yfinance, ta (technical analysis) |
+| **Deployment** | Render (backend) + Vercel (frontend) |
+
+---
+
+## ⚙️ Local Setup
+
+### Backend
+```bash
+cd backend
+pip install fastapi uvicorn pandas numpy joblib xgboost lightgbm catboost shap optuna apscheduler yfinance ta pytz
+uvicorn main:app --reload --port 8000
+```
+
+### Frontend
+```bash
+cd trading-dashboard
+npm install
+npm run dev
+```
+
+### Retrain Model
+```bash
+python data_pipeline_v3.py   # fetch and engineer features
+python train_model_v5.py     # train ensemble
+```
+
+---
+
+## 📈 Results
+
+| Metric | Value |
+|---|---|
+| **Strategy Return** | +114.51% |
+| **Win Rate** | 72.2% |
+| **QUANT Client** | +848.23% |
+| **MACRO Client** | +251.2% |
+| **NSEI Benchmark** | +167.48% |
+
+---
+
+## 👤 Author
+
+**Bhanu** — [@Bhanu17291](https://github.com/Bhanu17291)
