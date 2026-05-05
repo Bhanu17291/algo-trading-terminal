@@ -22,7 +22,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "https://algo-trading-terminal.vercel.app", "https://*.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
