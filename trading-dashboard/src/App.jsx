@@ -16,7 +16,7 @@ import ScreenerPage from "./components/pages/ScreenerPage"
 import NewsPage from "./components/pages/NewsPage"
 import ClientsPage from "./components/pages/ClientsPage"
 
-const API = "http://localhost:8000"
+const API = "https://algo-trading-terminal.onrender.com"
 
 export default function App() {
   const [page, setPage]           = useState("dashboard")

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import Panel from "../shared/Panel"
 
-const API = "http://localhost:8000"
+const API = "https://algo-trading-terminal.onrender.com"
 const mono = "'Courier New', monospace"
 
 export default function MarketPage() {
