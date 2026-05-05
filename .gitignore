@@ -2,7 +2,6 @@
 __pycache__/
 *.pyc
 *.pyo
-*.pkl
 *.egg-info/
 venv/
 env/
@@ -10,12 +9,11 @@ env/
 # Node
 node_modules/
 dist/
-.env
-
-# Data (large files)
-data/*.csv
-data/*.json
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Keep models and data — needed for deployment
+# *.pkl  <-- removed, models must be committed
+# data/*.csv  <-- removed, data must be committed

@@ -1,0 +1,73 @@
+date,action,price,qty,pnl,confidence,log,exit_type
+2023-03-15,BUY,16989.12,5,0.0,0.591,ML → BUY  (p=0.591) | fill=16989 | qty=5,
+2023-04-10,SELL,17606.43,5,2910.46,0.868,ML → FORCE EXIT (held 15d) | fill=17606 | realized PnL = +2910.46,forced
+2023-04-19,BUY,17636.37,5,0.0,0.72,ML → BUY  (p=0.720) | fill=17636 | qty=5,
+2023-05-11,SELL,18278.7,5,3028.88,0.774,ML → FORCE EXIT (held 15d) | fill=18278 | realized PnL = +3028.88,forced
+2023-05-18,BUY,18148.08,5,0.0,0.715,ML → BUY  (p=0.715) | fill=18148 | qty=5,
+2023-06-08,SELL,18615.92,5,2153.03,0.786,ML → FORCE EXIT (held 15d) | fill=18615 | realized PnL = +2153.03,forced
+2023-06-22,BUY,18790.02,5,0.0,0.533,ML → BUY  (p=0.533) | fill=18790 | qty=5,
+2023-07-14,SELL,19544.94,5,3579.12,0.709,ML → FORCE EXIT (held 15d) | fill=19544 | realized PnL = +3579.12,forced
+2023-08-28,BUY,19325.36,5,0.0,0.54,ML → BUY  (p=0.540) | fill=19325 | qty=5,
+2023-09-13,SELL,20049.93,5,3422.37,0.889,ML → SELL (p=0.889) | fill=20049 | realized PnL = +3422.37,signal
+2023-10-04,BUY,19455.54,5,0.0,0.587,ML → BUY  (p=0.587) | fill=19455 | qty=5,
+2023-10-16,SELL,19712.02,5,1085.29,0.512,ML → SELL (p=0.512) | fill=19712 | realized PnL = +1085.29,signal
+2023-10-26,BUY,18876.11,5,0.0,0.712,ML → BUY  (p=0.712) | fill=18876 | qty=5,
+2023-11-17,SELL,19712.07,5,3982.69,0.818,ML → FORCE EXIT (held 15d) | fill=19712 | realized PnL = +3982.69,forced
+2023-11-21,BUY,19803.18,5,0.0,0.585,ML → BUY  (p=0.585) | fill=19803 | qty=5,
+2023-12-13,SELL,20905.42,5,5302.14,0.851,ML → FORCE EXIT (held 15d) | fill=20905 | realized PnL = +5302.14,forced
+2023-12-13,BUY,20947.28,5,0.0,0.851,ML → BUY  (p=0.851) | fill=20947 | qty=5,
+2024-01-04,SELL,21636.94,5,-995.31,0.866,ML → FORCE EXIT (held 15d) | fill=21636 | realized PnL = -995.31,forced
+2024-01-08,BUY,21534.51,5,0.0,0.704,ML → BUY  (p=0.704) | fill=21534 | qty=5,
+2024-01-12,SELL,21872.66,5,1471.99,0.728,ML → SELL (p=0.728) | fill=21872 | realized PnL = +1471.99,signal
+2024-01-18,BUY,21483.71,5,0.0,0.758,ML → BUY  (p=0.758) | fill=21483 | qty=5,
+2024-02-12,SELL,21594.43,5,337.67,0.695,ML → FORCE EXIT (held 15d) | fill=21594 | realized PnL = +337.67,forced
+2024-02-12,BUY,21637.67,5,0.0,0.695,ML → BUY  (p=0.695) | fill=21637 | qty=5,
+2024-02-22,SELL,22195.23,5,2565.87,0.494,ML → SELL (p=0.494) | fill=22195 | realized PnL = +2565.87,signal
+2024-02-26,BUY,22144.17,5,0.0,0.404,ML → BUY  (p=0.404) | fill=22144 | qty=5,
+2024-03-05,SELL,22333.94,5,-413.76,0.489,ML → SELL (p=0.489) | fill=22333 | realized PnL = -413.76,signal
+2024-03-19,BUY,21839.27,5,0.0,0.523,ML → BUY  (p=0.523) | fill=21839 | qty=5,
+2024-04-08,SELL,22643.63,5,-2546.83,0.663,ML → SELL (p=0.663) | fill=22643 | realized PnL = -2546.83,signal
+2024-04-16,BUY,22170.05,5,0.0,0.765,ML → BUY  (p=0.765) | fill=22170 | qty=5,
+2024-04-29,SELL,22620.76,5,2027.34,0.642,ML → SELL (p=0.642) | fill=22620 | realized PnL = +2027.34,signal
+2024-05-09,BUY,21979.46,5,0.0,0.723,ML → BUY  (p=0.723) | fill=21979 | qty=5,
+2024-05-23,SELL,22944.68,5,4596.68,0.605,ML → SELL (p=0.605) | fill=22944 | realized PnL = +4596.68,signal
+2024-05-30,BUY,22511.14,5,0.0,0.739,ML → BUY  (p=0.739) | fill=22511 | qty=5,
+2024-06-21,SELL,23477.6,5,-2666.83,0.802,ML → FORCE EXIT (held 15d) | fill=23477 | realized PnL = -2666.83,forced
+2024-06-21,BUY,23524.6,5,0.0,0.802,ML → BUY  (p=0.802) | fill=23524 | qty=5,
+2024-07-12,SELL,24477.65,5,-3911.65,0.852,ML → FORCE EXIT (held 15d) | fill=24477 | realized PnL = -3911.65,forced
+2024-07-19,BUY,24555.43,5,0.0,0.627,ML → BUY  (p=0.627) | fill=24555 | qty=5,
+2024-07-29,SELL,24811.26,5,1031.05,0.93,ML → SELL (p=0.930) | fill=24811 | realized PnL = +1031.05,signal
+2024-08-05,BUY,24079.66,5,0.0,0.79,ML → BUY  (p=0.790) | fill=24079 | qty=5,
+2024-08-27,SELL,24992.73,5,4315.46,0.669,ML → FORCE EXIT (held 15d) | fill=24992 | realized PnL = +4315.46,forced
+2024-08-27,BUY,25042.77,5,0.0,0.669,ML → BUY  (p=0.669) | fill=25042 | qty=5,
+2024-08-30,SELL,25210.66,5,587.38,0.456,ML → SELL (p=0.456) | fill=25210 | realized PnL = +587.38,signal
+2024-09-06,BUY,24877.0,5,0.0,0.665,ML → BUY  (p=0.665) | fill=24877 | qty=5,
+2024-09-25,SELL,25978.15,5,-3715.09,0.741,ML → SELL (p=0.741) | fill=25978 | realized PnL = -3715.09,signal
+2024-10-07,BUY,24820.55,5,0.0,0.568,ML → BUY  (p=0.568) | fill=24820 | qty=5,
+2024-10-14,SELL,25102.82,5,1160.35,0.79,ML → SELL (p=0.790) | fill=25102 | realized PnL = +1160.35,signal
+2024-11-13,BUY,23582.61,6,0.0,0.814,ML → BUY  (p=0.814) | fill=23582 | qty=6,
+2024-12-06,SELL,24653.12,6,6127.24,0.813,ML → FORCE EXIT (held 15d) | fill=24653 | realized PnL = +6127.24,forced
+2025-01-13,BUY,23109.04,6,0.0,0.59,ML → BUY  (p=0.590) | fill=23109 | qty=6,
+2025-02-01,SELL,23458.67,6,1816.29,0.723,ML → FORCE EXIT (held 15d) | fill=23458 | realized PnL = +1816.29,forced
+2025-02-28,BUY,22146.82,6,0.0,0.83,ML → BUY  (p=0.830) | fill=22146 | qty=6,
+2025-03-24,SELL,23634.69,6,8643.59,0.743,ML → FORCE EXIT (held 15d) | fill=23634 | realized PnL = +8643.59,forced
+2025-04-04,BUY,22927.35,6,0.0,0.676,ML → BUY  (p=0.676) | fill=22927 | qty=6,
+2025-04-30,SELL,24309.87,6,-4237.59,0.663,ML → FORCE EXIT (held 15d) | fill=24309 | realized PnL = -4237.59,forced
+2025-05-05,BUY,24485.61,6,0.0,0.746,ML → BUY  (p=0.746) | fill=24485 | qty=6,
+2025-05-15,SELL,25037.04,6,3008.11,0.691,ML → SELL (p=0.691) | fill=25037 | realized PnL = +3008.11,signal
+2025-05-30,BUY,24775.45,6,0.0,0.765,ML → BUY  (p=0.765) | fill=24775 | qty=6,
+2025-06-06,SELL,24978.05,6,915.85,0.407,ML → SELL (p=0.407) | fill=24978 | realized PnL = +915.85,signal
+2025-06-13,BUY,24743.32,6,0.0,0.578,ML → BUY  (p=0.578) | fill=24743 | qty=6,
+2025-07-04,SELL,25435.54,6,3848.1,0.695,ML → FORCE EXIT (held 15d) | fill=25435 | realized PnL = +3848.10,forced
+2025-08-08,BUY,24387.66,7,0.0,0.626,ML → BUY  (p=0.626) | fill=24387 | qty=7,
+2025-08-19,SELL,24955.67,7,-3227.5,0.485,ML → SELL (p=0.485) | fill=24955 | realized PnL = -3227.50,signal
+2025-08-29,BUY,24451.28,7,0.0,0.48,ML → BUY  (p=0.480) | fill=24451 | qty=7,
+2025-09-17,SELL,25304.92,7,-4586.72,0.772,ML → SELL (p=0.772) | fill=25304 | realized PnL = -4586.72,signal
+2025-09-26,BUY,24679.35,7,0.0,0.684,ML → BUY  (p=0.684) | fill=24679 | qty=7,
+2025-10-20,SELL,25817.31,7,7604.23,0.797,ML → FORCE EXIT (held 15d) | fill=25817 | realized PnL = +7604.23,forced
+2025-11-04,BUY,25623.25,7,0.0,0.797,ML → BUY  (p=0.797) | fill=25623 | qty=7,
+2025-11-26,SELL,26179.1,7,3524.42,0.914,ML → FORCE EXIT (held 15d) | fill=26179 | realized PnL = +3524.42,forced
+2025-12-16,BUY,25885.96,7,0.0,0.503,ML → BUY  (p=0.503) | fill=25885 | qty=7,
+2026-01-01,SELL,26120.4,7,1275.43,0.813,ML → SELL (p=0.813) | fill=26120 | realized PnL = +1275.43,signal
+2026-01-21,BUY,25182.66,7,0.0,0.635,ML → BUY  (p=0.635) | fill=25182 | qty=7,
+2026-02-12,SELL,25781.39,7,-1357.28,0.767,ML → FORCE EXIT (held 15d) | fill=25781 | realized PnL = -1357.28,forced

@@ -1,10 +1,3 @@
-import pandas as pd
-import numpy as np
-import joblib
-import optuna
-import warnings
-warnings.filterwarnings('ignore')
-
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
@@ -12,6 +5,16 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, accuracy_score
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.calibration import CalibratedClassifierCV
+
+
+import pandas as pd
+import numpy as np
+import joblib
+import optuna
+import warnings
+warnings.filterwarnings('ignore')
+
+
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -209,6 +212,6 @@ df.to_csv('data/nsei_features.csv')
 
 print("\n✅ DONE. All models saved.")
 print(f"   Features: {len(FEATURES)} total")
-print(f"   Models:   xgb_model.pkl, lgbm_model.pkl, cat_model.pkl")
-print(f"   Weights:  ensemble_weights.pkl")
-print(f"   Ensemble test accuracy: {ensemble_acc:.4f}")
+print("   Models:   xgb_model.pkl, lgbm_model.pkl, cat_model.pkl")
+print("   Weights:  ensemble_weights.pkl")
+print("   Ensemble test accuracy: {ensemble_acc:.4f}")
