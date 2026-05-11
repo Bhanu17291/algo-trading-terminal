@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import Panel from "../shared/Panel"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
@@ -33,7 +34,7 @@ function generateSignal(symbol) {
   return { signal, confidence, change, price, rsi }
 }
 
-export default function ScreenerPage() {
+export default function ScreenerPage({ onBack }) {
   const [filter, setFilter] = useState("ALL")
   const [sortBy, setSortBy] = useState("confidence")
   const [scanned, setScanned] = useState(false)
@@ -68,6 +69,8 @@ export default function ScreenerPage() {
 
   return (
     <div className="flex flex-col gap-3">
+
+      <BackButton onBack={onBack} />
 
       {/* Scanner controls */}
       <Panel title="NSE STOCK SCREENER — ML SIGNAL SCANNER">

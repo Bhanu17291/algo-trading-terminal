@@ -1,6 +1,7 @@
 import { useState } from "react"
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
@@ -10,7 +11,7 @@ const PROFILES = {
   MACRO:  { capital: 100000, riskPct: 1.5, entry: 23000, stop: 22655, winRate: 90,   avgWin: 3500,  avgLoss: 1500  },
 }
 
-export default function RiskPage({ compare }) {
+export default function RiskPage({ compare, onBack }) {
   const [profile, setProfile] = useState("CUSTOM")
   const [capital,    setCapital]    = useState(100000)
   const [riskPct,    setRiskPct]    = useState(2)
@@ -42,6 +43,8 @@ export default function RiskPage({ compare }) {
 
   return (
     <div className="flex flex-col gap-3">
+
+      <BackButton onBack={onBack} />
 
       {/* Profile selector */}
       <Panel title="LOAD CLIENT RISK PROFILE">

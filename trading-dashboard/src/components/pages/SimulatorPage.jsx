@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContai
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
 import ChartTooltip from "../shared/ChartTooltip"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
@@ -14,7 +15,7 @@ function scalePortfolio(portfolioArr, capital) {
   }))
 }
 
-export default function SimulatorPage({ portfolio, compare }) {
+export default function SimulatorPage({ portfolio, compare, onBack }) {
   const [capital, setCapital]   = useState(100000)
   const [inputVal, setInputVal] = useState("100000")
   const [mode, setMode]         = useState("ALL")
@@ -46,6 +47,8 @@ export default function SimulatorPage({ portfolio, compare }) {
 
   return (
     <div className="flex flex-col gap-3">
+
+      <BackButton onBack={onBack} />
 
       {/* Capital input */}
       <Panel title="PORTFOLIO SIMULATOR — ENTER YOUR CAPITAL">
