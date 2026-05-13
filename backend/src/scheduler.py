@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 def start_scheduler():
-    from incremental_learn import run_daily_update
-    from paper_engine import run_paper_engine
+    from src.incremental_learn import run_daily_update
+    from src.paper_engine import run_paper_engine
 
     scheduler = BackgroundScheduler(timezone=IST)
 

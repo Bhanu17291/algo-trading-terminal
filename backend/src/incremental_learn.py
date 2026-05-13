@@ -23,7 +23,7 @@ import lightgbm as lgb
 from catboost import CatBoostClassifier
 from datetime import datetime, date
 import pytz
-from database import get_db, Signal, ModelVersion  # your DB module (see database.py)
+from src.database import get_db, Signal, ModelVersion  # your DB module (see database.py)
 
 TICKER = "^NSEI"
 MODEL_DIR = "models"

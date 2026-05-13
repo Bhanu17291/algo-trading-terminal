@@ -19,7 +19,7 @@ import yfinance as yf
 import pytz
 from datetime import datetime, date
 from sqlalchemy.orm import Session
-from database import get_db, Signal, Trade, EquityCurvePoint
+from src.database import get_db, Signal, Trade, EquityCurvePoint
 
 IST = pytz.timezone("Asia/Kolkata")
 TICKER = "^NSEI"

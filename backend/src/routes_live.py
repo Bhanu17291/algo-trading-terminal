@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date
 import yfinance as yf
-from database import get_db, Signal, Trade, EquityCurvePoint, ModelVersion
+from src.database import get_db, Signal, Trade, EquityCurvePoint, ModelVersion
 import json, os
 
 router = APIRouter()
