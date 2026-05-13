@@ -1,14 +1,16 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer } from "recharts"
 import Panel from "../shared/Panel"
 import ChartTooltip from "../shared/ChartTooltip"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
-export default function IndicatorsPage({ indicators }) {
+export default function IndicatorsPage({ indicators, onBack }) {
   const latest = indicators?.[indicators.length - 1]
 
   return (
     <div className="flex flex-col gap-3">
+      <BackButton onBack={onBack} />
 
       {/* Live indicator values */}
       <div className="grid grid-cols-4 gap-3">

@@ -1,10 +1,20 @@
 import { useState, useEffect } from "react"
+import BackButton from "../layout/BackButton"
 
-const API = "https://algo-trading-terminal.onrender.com"
 const mono = "'Courier New', monospace"
 
 const TICKER_ITEMS = [
   "NSEI", "RELIANCE", "TCS", "HDFC", "INFOSYS", "ICICIBANK", "WIPRO", "BAJFINANCE", "AXISBANK", "SBIN"
+]
+
+// Maps bottom nav labels → page IDs (must match App.jsx CARD_PAGE_MAP)
+const BOTTOM_NAV = [
+  { label: "DASHBOARD", dest: "dashboard" },
+  { label: "SIGNAL",    dest: "signal" },    // → explainer
+  { label: "PORTFOLIO", dest: "portfolio" }, // → dashboard
+  { label: "CLIENTS",   dest: "clients" },   // → clients
+  { label: "ML",        dest: "explainer" }, // → explainer
+  { label: "RISK",      dest: "risk" },      // → risk
 ]
 
 export default function LandingPage({ onEnter, signal, stats, compare }) {
@@ -176,16 +186,10 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
           <div style={{ fontSize: 10, color: "#444", letterSpacing: 4, marginBottom: 8 }}>
             ALGORITHMIC TRADING INTELLIGENCE
           </div>
-          <div style={{
-            fontSize: 42, fontWeight: 900, letterSpacing: -1, lineHeight: 1,
-            color: "#fff",
-          }}>
+          <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: -1, lineHeight: 1, color: "#fff" }}>
             NSEI ALGO
           </div>
-          <div style={{
-            fontSize: 42, fontWeight: 900, letterSpacing: -1, lineHeight: 1,
-            color: "#ff6600",
-          }}>
+          <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: -1, lineHeight: 1, color: "#ff6600" }}>
             TERMINAL
           </div>
           <div style={{ fontSize: 12, color: "#555", marginTop: 12, maxWidth: 420, lineHeight: 1.6 }}>
@@ -215,9 +219,9 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
       </div>
 
       {/* ── FEATURE CARDS ── */}
-      <div style={{ padding: "32px 40px" }}>
+      <div style={{ padding: "32px 40px 80px" }}>
         <div style={{ fontSize: 9, color: "#333", letterSpacing: 4, marginBottom: 20 }}>
-          PLATFORM CAPABILITIES — SELECT A MODULE TO ENTER
+          PLATFORM CAPABILITIES — CLICK A MODULE TO ENTER
         </div>
         <div style={{
           display: "grid",
@@ -239,14 +243,16 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <div style={{ display: "flex", gap: 24 }}>
-          {["DASHBOARD", "SIGNAL", "PORTFOLIO", "CLIENTS", "ML", "RISK"].map(p => (
+          {BOTTOM_NAV.map(({ label, dest }) => (
             <span
-              key={p}
-              onClick={() => onEnter(p.toLowerCase())}
+              key={label}
+              onClick={() => onEnter(dest)}
               style={{ fontSize: 9, color: "#444", letterSpacing: 2, cursor: "pointer" }}
               onMouseEnter={e => e.target.style.color = "#ff6600"}
               onMouseLeave={e => e.target.style.color = "#444"}
-            >{p}</span>
+            >
+              {label}
+            </span>
           ))}
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>

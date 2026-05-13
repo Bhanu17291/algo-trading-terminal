@@ -6,6 +6,8 @@ All original endpoints preserved exactly.
 Live signal refreshes every 5 min during market hours only (not every 1 min always).
 """
 
+from src.routes_live import router as live_router
+from src.scheduler import start_scheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -19,6 +21,7 @@ import json
 import os
 
 app = FastAPI()
+app.include_router(live_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
@@ -193,10 +196,15 @@ def run_trading_loop():
     except Exception as e:
         print(f"[run_trading_loop ERROR] {e}")
 
-# ── Scheduler: every 5 min (was 1 min), skips when market closed ─
+# ── Scheduler: every 5 min, skips when market closed ─────────
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_loop, 'interval', minutes=5, max_instances=1, coalesce=True)
 scheduler.start()
+
+# ── NEW: Startup event — starts the daily learning + paper engine scheduler ──
+@app.on_event("startup")
+async def startup():
+    start_scheduler()
 
 # ═══════════════════════════════════════════════════════════════
 # ENDPOINTS — all identical to your original main.py
@@ -208,7 +216,6 @@ def root():
 
 @app.get("/signal")
 def get_latest_signal():
-    # Serve from cache if available, else compute live
     if os.path.exists(SIGNAL_CACHE_PATH):
         with open(SIGNAL_CACHE_PATH) as f:
             return json.load(f)
@@ -223,7 +230,6 @@ def get_latest_signal():
 
 @app.get("/portfolio")
 def get_portfolio():
-    # Serve from cache if available
     cache_path = f"{CACHE_DIR}/portfolio_cache.json"
     if os.path.exists(cache_path):
         with open(cache_path) as f:
@@ -303,7 +309,6 @@ def get_psychology():
     if os.path.exists(cache_path):
         with open(cache_path) as f:
             return json.load(f)
-    # Fallback: compute live (exact original logic)
     st = trades[trades['pnl'] != 0].copy()
     if len(st) == 0:
         return {"score": 100, "status": "HEALTHY", "message": "No trades yet.", "alerts": []}
@@ -344,7 +349,7 @@ def get_psychology():
 def get_shap():
     return _shap_cache
 
-# ── Walk-forward (unchanged from your original) ───────────────
+# ── Walk-forward ──────────────────────────────────────────────
 def run_walk_forward_engine():
     from xgboost import XGBClassifier
     from sklearn.preprocessing import LabelEncoder
@@ -444,7 +449,7 @@ def trigger_walkforward():
     return {"status": "complete", "windows": r["summary"]["total_windows"],
             "alpha": r["summary"]["avg_alpha"]}
 
-# ── Clients (unchanged from your original) ────────────────────
+# ── Clients ───────────────────────────────────────────────────
 def calc_stats(tl, pl):
     initial = 100000
     final   = pl[-1]["value"] if pl else initial

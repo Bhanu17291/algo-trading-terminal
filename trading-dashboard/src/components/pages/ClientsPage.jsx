@@ -6,6 +6,7 @@ import {
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
 import ChartTooltip from "../shared/ChartTooltip"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
@@ -18,7 +19,7 @@ function ProfileBadge({ label, value }) {
   )
 }
 
-export default function ClientsPage({ compare }) {
+export default function ClientsPage({ compare, onBack }) {
   const [activeTab, setActiveTab] = useState("QUANT")
 
   if (!compare) return (
@@ -33,7 +34,6 @@ export default function ClientsPage({ compare }) {
   const nsei_return = chart_data.filter(d => d.NSEI).slice(-1)[0]?.NSEI
   const nsei_pct    = nsei_return ? ((nsei_return - 100000) / 100000 * 100).toFixed(2) : "—"
 
-  // Drawdown series for both
   const ddData = (() => {
     let qPeak = 100000, mPeak = 100000
     return chart_data.map(d => {
@@ -47,7 +47,6 @@ export default function ClientsPage({ compare }) {
     })
   })()
 
-  // Bar comparison data
   const barData = [
     { metric: "Return %",   QUANT: quant_stats.total_return,  MACRO: macro_stats.total_return  },
     { metric: "Win Rate %", QUANT: quant_stats.win_rate,      MACRO: macro_stats.win_rate      },
@@ -60,6 +59,8 @@ export default function ClientsPage({ compare }) {
 
   return (
     <div className="flex flex-col gap-3">
+
+      <BackButton onBack={onBack} />
 
       {/* ── CLIENT HEADER CARDS ── */}
       <div className="grid grid-cols-3 gap-3">
@@ -90,8 +91,6 @@ export default function ClientsPage({ compare }) {
         {/* VS divider */}
         <div className="flex flex-col items-center justify-center gap-4">
           <div style={{ fontSize: 36, fontWeight: 900, color: "#444", fontFamily: mono }}>VS</div>
-
-          {/* Alpha comparison */}
           <div className="flex flex-col gap-2 w-full">
             <div className="card bg-base-300 p-3 text-center" style={{ borderTop: "2px solid #ff6600" }}>
               <div style={{ fontSize: 10, color: "#666", fontFamily: mono, marginBottom: 4 }}>QUANT α vs NSEI</div>

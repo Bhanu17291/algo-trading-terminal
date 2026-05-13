@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
 import Panel from "../shared/Panel"
+import BackButton from "../layout/BackButton"
 
 const API = "https://algo-trading-terminal.onrender.com"
 const mono = "'Courier New', monospace"
 
-export default function MarketPage() {
+export default function MarketPage({ onBack }) {
   const [status, setStatus] = useState(null)
   const [log, setLog] = useState([])
 
@@ -26,6 +27,7 @@ export default function MarketPage() {
 
   return (
     <div className="flex flex-col gap-3">
+      <BackButton onBack={onBack} />
 
       {/* Status Cards */}
       <div className="grid grid-cols-2 gap-3">

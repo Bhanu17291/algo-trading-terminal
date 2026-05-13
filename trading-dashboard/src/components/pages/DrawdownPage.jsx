@@ -2,6 +2,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContai
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
 import ChartTooltip from "../shared/ChartTooltip"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
@@ -14,12 +15,11 @@ function calcDrawdown(portfolioArr) {
   })
 }
 
-export default function DrawdownPage({ portfolio, trades, compare }) {
+export default function DrawdownPage({ portfolio, trades, compare, onBack }) {
   const strategyDD = calcDrawdown(portfolio)
   const quantDD    = calcDrawdown(compare?.quant_portfolio)
   const macroDD    = calcDrawdown(compare?.macro_portfolio)
 
-  // Merge all 3 into one chart dataset by index
   const combinedDD = strategyDD.map((row, i) => ({
     date:     row.date,
     STRATEGY: row.drawdown,
@@ -31,9 +31,9 @@ export default function DrawdownPage({ portfolio, trades, compare }) {
   const minQuant    = Math.min(...quantDD.map(d => d.drawdown))
   const minMacro    = Math.min(...macroDD.map(d => d.drawdown))
 
-  const sells         = trades?.filter(t => t.action === "SELL" && t.pnl < 0) || []
-  const quantSells    = (compare?.quant_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
-  const macroSells    = (compare?.macro_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
+  const sells      = trades?.filter(t => t.action === "SELL" && t.pnl < 0) || []
+  const quantSells = (compare?.quant_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
+  const macroSells = (compare?.macro_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
 
   const summaryRows = [
     ["MAX DRAWDOWN",   `${minStrategy.toFixed(2)}%`, `${minQuant.toFixed(2)}%`,    `${minMacro.toFixed(2)}%`,    "#ff3131"],
@@ -45,6 +45,8 @@ export default function DrawdownPage({ portfolio, trades, compare }) {
 
   return (
     <div className="flex flex-col gap-3">
+
+      <BackButton onBack={onBack} />
 
       {/* Summary stat cards */}
       <div className="grid grid-cols-3 gap-3">

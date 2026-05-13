@@ -1,8 +1,9 @@
 import { useState } from "react"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell, Legend } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts"
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
 import ChartTooltip from "../shared/ChartTooltip"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
@@ -82,7 +83,7 @@ function TradeTable({ trades }) {
   )
 }
 
-export default function TradePage({ trades, compare }) {
+export default function TradePage({ trades, compare, onBack }) {
   const [tab, setTab] = useState("STRATEGY")
 
   const tabTrades = {
@@ -99,6 +100,9 @@ export default function TradePage({ trades, compare }) {
 
   return (
     <div className="flex flex-col gap-3">
+
+      {/* ── BACK BUTTON ── */}
+      <BackButton onBack={onBack} />
 
       {/* Tab switcher */}
       <div className="flex items-center gap-4">
@@ -121,9 +125,9 @@ export default function TradePage({ trades, compare }) {
       {/* Summary stat cards */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          ["TOTAL TRADES", currentTrades.length,    color],
-          ["WINNING",      wins.length,              "#00ff41"],
-          ["LOSING",       sells.length - wins.length, "#ff3131"],
+          ["TOTAL TRADES", currentTrades.length,          color],
+          ["WINNING",      wins.length,                   "#00ff41"],
+          ["LOSING",       sells.length - wins.length,    "#ff3131"],
           ["WIN RATE",     sells.length ? `${((wins.length / sells.length) * 100).toFixed(1)}%` : "—", "#ffd700"],
         ].map(([l, v, c]) => (
           <div key={l} className="stat bg-base-200 rounded-box border border-base-300"

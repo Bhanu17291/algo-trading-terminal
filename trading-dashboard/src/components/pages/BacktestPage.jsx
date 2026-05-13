@@ -2,20 +2,18 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContai
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
 import ChartTooltip from "../shared/ChartTooltip"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
-export default function BacktestPage({ portfolio }) {
+export default function BacktestPage({ portfolio, onBack }) {
   // Simulate 3 strategies from same starting capital
   const initial = 100000
   const data = portfolio?.map((row, i) => {
     const progress = i / (portfolio.length - 1)
     const mlValue = row.value
-    // SMA crossover only — slower, lower return
     const smaValue = initial * (1 + progress * 0.52 + Math.sin(progress * 8) * 0.02)
-    // RSI only — volatile, moderate return
     const rsiValue = initial * (1 + progress * 0.38 + Math.sin(progress * 15) * 0.04)
-    // Buy & Hold NSEI
     const buyHoldValue = initial * (1 + progress * 0.34)
     return {
       date: row.date?.slice(2, 7),
@@ -68,6 +66,9 @@ export default function BacktestPage({ portfolio }) {
   return (
     <div className="flex flex-col gap-3">
 
+      {/* ── BACK BUTTON ── */}
+      <BackButton onBack={onBack} />
+
       {/* Strategy comparison cards */}
       <div className="grid grid-cols-4 gap-3">
         {strategies.map(s => (
@@ -106,10 +107,10 @@ export default function BacktestPage({ portfolio }) {
             <Tooltip content={<ChartTooltip />} />
             <ReferenceLine y={100000} stroke="#333" strokeDasharray="4 4" />
             <Legend wrapperStyle={{ fontFamily: mono, fontSize: 11 }} />
-            <Line type="monotone" dataKey="ML Strategy" stroke="#ff6600" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="ML Strategy"   stroke="#ff6600" strokeWidth={2.5} dot={false} />
             <Line type="monotone" dataKey="SMA Crossover" stroke="#00aaff" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-            <Line type="monotone" dataKey="RSI Only" stroke="#ffd700" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-            <Line type="monotone" dataKey="Buy & Hold" stroke="#cc44ff" strokeWidth={1.5} dot={false} strokeDasharray="2 2" />
+            <Line type="monotone" dataKey="RSI Only"      stroke="#ffd700" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+            <Line type="monotone" dataKey="Buy & Hold"    stroke="#cc44ff" strokeWidth={1.5} dot={false} strokeDasharray="2 2" />
           </LineChart>
         </ResponsiveContainer>
       </Panel>
@@ -133,11 +134,12 @@ export default function BacktestPage({ portfolio }) {
       {/* Alpha */}
       <Panel title="ALPHA GENERATED vs BENCHMARK" accent="#00ff41">
         <div className="grid grid-cols-3 gap-4">
-          <Metric label="ML vs Buy & Hold" value="+80.51%" color="#00ff41" size={28} />
+          <Metric label="ML vs Buy & Hold"    value="+80.51%" color="#00ff41" size={28} />
           <Metric label="ML vs SMA Crossover" value="+62.21%" color="#00ff41" size={28} />
-          <Metric label="ML vs RSI Only" value="+76.41%" color="#00ff41" size={28} />
+          <Metric label="ML vs RSI Only"      value="+76.41%" color="#00ff41" size={28} />
         </div>
       </Panel>
+
     </div>
   )
 }

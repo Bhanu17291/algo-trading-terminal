@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import Panel from "../shared/Panel"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 const NEWS_API_KEY = "e49d012d11044821a1426a79e9a35045"
@@ -15,7 +16,7 @@ function getSentiment(title) {
   return { label: "NEUTRAL", color: "#ffd700", score: 0 }
 }
 
-export default function NewsPage() {
+export default function NewsPage({ onBack }) {
   const [news, setNews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -58,6 +59,7 @@ export default function NewsPage() {
 
   return (
     <div className="flex flex-col gap-3">
+      <BackButton onBack={onBack} />
 
       {/* Overall sentiment */}
       <div className="grid grid-cols-4 gap-3">

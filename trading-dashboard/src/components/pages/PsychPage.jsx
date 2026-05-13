@@ -1,5 +1,6 @@
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
@@ -86,12 +87,13 @@ function clientPsych(trades, portfolio) {
   return { score, status, message, color, alerts, consecutive_losses, drawdown_pct, recent_winrate, conf_score }
 }
 
-export default function PsychPage({ psych, compare }) {
+export default function PsychPage({ psych, compare, onBack }) {
   const quantPsych = clientPsych(compare?.quant_trades, compare?.quant_portfolio)
   const macroPsych = clientPsych(compare?.macro_trades, compare?.macro_portfolio)
 
   return (
     <div className="flex flex-col gap-3">
+      <BackButton onBack={onBack} />
 
       {/* Original strategy psych */}
       <Panel title="🧠 ORIGINAL STRATEGY — EMOTIONAL HEALTH">

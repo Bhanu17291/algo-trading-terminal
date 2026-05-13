@@ -1,5 +1,6 @@
 import { useState } from "react"
 import Panel from "../shared/Panel"
+import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
@@ -98,7 +99,7 @@ function DayBars({ dayPnl, color }) {
   )
 }
 
-export default function HeatmapPage({ trades, compare }) {
+export default function HeatmapPage({ trades, compare, onBack }) {
   const [tab, setTab] = useState("STRATEGY")
 
   const tabTrades = {
@@ -115,6 +116,8 @@ export default function HeatmapPage({ trades, compare }) {
 
   return (
     <div className="flex flex-col gap-3">
+
+      <BackButton onBack={onBack} />
 
       {/* Tab switcher */}
       <div className="join">
