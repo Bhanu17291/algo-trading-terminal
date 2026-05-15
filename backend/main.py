@@ -68,9 +68,12 @@ def ensemble_predict(X):
     buy_prob = probs[:, 1]
     signals  = []
     for bp in buy_prob:
-        if bp >= 0.55:   signals.append(1)
-        elif bp <= 0.35: signals.append(-1)
-        else:            signals.append(0)
+        if bp >= 0.55: 
+            signals.append(1)
+        elif bp <= 0.35: 
+            signals.append(-1)
+        else:           
+            signals.append(0)
     return np.array(signals), probs.max(axis=1), probs
 
 # ── Load SHAP from cache (instant) ────────────────────────────
@@ -173,7 +176,8 @@ live_log = []
 
 def is_market_open():
     now = datetime.now(IST)
-    if now.weekday() >= 5: return False
+    if now.weekday() >= 5: 
+        return False
     return now.replace(hour=9, minute=15, second=0) <= now <= now.replace(hour=15, minute=30, second=0)
 
 def run_trading_loop():
@@ -315,32 +319,50 @@ def get_psychology():
     recent = st['pnl'].tail(5).tolist()
     cl = 0
     for p in reversed(recent):
-        if p < 0: cl += 1
-        else: break
+        if p < 0:
+            cl += 1
+        else: 
+            break
     peak = portfolio['value'].max()
     cur  = portfolio['value'].iloc[-1]
     dd   = round((peak - cur) / peak * 100, 2)
     rw   = round(sum(1 for p in recent if p > 0) / len(recent) * 100, 1) if recent else 0
     cs   = round(float(trades['confidence'].tail(5).mean()) * 100, 2)
     score = 100 - [0, 10, 25, 40, 60][min(cl, 4)]
-    if dd > 10:   score -= 30
-    elif dd > 5:  score -= 20
-    elif dd > 2:  score -= 10
-    if rw < 20:   score -= 30
-    elif rw < 40: score -= 15
-    if cs < 50:   score -= 10
+    if dd > 10:  
+        score -= 30
+    elif dd > 5: 
+        score -= 20
+    elif dd > 2:  
+        score -= 10
+    if rw < 20:  
+        score -= 30
+    elif rw < 40:
+        score -= 15
+    if cs < 50:   
+        score -= 10
     score = max(0, min(100, score))
     alerts = []
-    if cl >= 3:   alerts.append("🚨 Revenge trading risk — 3+ consecutive losses detected")
-    elif cl == 2: alerts.append("⚠️ 2 losses in a row — recency bias may affect next decision")
-    if dd > 5:    alerts.append(f"🔴 Portfolio down {dd}% from peak")
-    elif dd > 2:  alerts.append(f"🟡 Drawdown of {dd}% detected")
-    if rw < 40:   alerts.append("📉 Win rate below 40% in last 5 trades")
-    if cs < 50:   alerts.append("🤔 Model confidence dropping")
-    if score >= 80:   s, m, c = "HEALTHY",     "You're trading well. Continue normally.",            "#22c55e"
-    elif score >= 50: s, m, c = "CAUTION",      "Signs of emotional stress. Consider reducing size.", "#f59e0b"
-    elif score >= 20: s, m, c = "HIGH RISK",    "High emotional risk. Consider pausing.",             "#ef4444"
-    else:             s, m, c = "STOP TRADING", "Critical state. Stop trading now.",                  "#dc2626"
+    if cl >= 3:   
+        alerts.append("🚨 Revenge trading risk — 3+ consecutive losses detected")
+    elif cl == 2: 
+        alerts.append("⚠️ 2 losses in a row — recency bias may affect next decision")
+    if dd > 5:   
+        alerts.append(f"🔴 Portfolio down {dd}% from peak")
+    elif dd > 2:  
+        alerts.append(f"🟡 Drawdown of {dd}% detected")
+    if rw < 40:   
+        alerts.append("📉 Win rate below 40% in last 5 trades")
+    if cs < 50:   
+        alerts.append("🤔 Model confidence dropping")
+    if score >= 80:   
+        s, m, c = "HEALTHY",     "You're trading well. Continue normally.",            "#22c55e"
+    elif score >= 50:
+        s, m, c = "CAUTION",      "Signs of emotional stress. Consider reducing size.", "#f59e0b"
+    elif score >= 20: 
+        s, m, c = "HIGH RISK",    "High emotional risk. Consider pausing.",             "#ef4444"
+    else:             
+        s, m, c = "STOP TRADING", "Critical state. Stop trading now.",                  "#dc2626"
     return {"score": score, "status": s, "message": m, "color": c,
             "consecutive_losses": cl, "drawdown_pct": dd,
             "recent_winrate": rw, "conf_score": cs, "alerts": alerts}
@@ -399,7 +421,8 @@ def run_walk_forward_engine():
         ret   = round((fv - 100000) / 100000 * 100, 2)
         pk, mdd = 100000, 0.0
         for e in eq:
-            if e["value"] > pk: pk = e["value"]
+            if e["value"] > pk:
+                pk = e["value"]
             mdd = max(mdd, (pk - e["value"]) / pk * 100)
         nr = round((float(te['Close'].iloc[-1]) - float(te['Close'].iloc[0])) /
                    float(te['Close'].iloc[0]) * 100, 2)

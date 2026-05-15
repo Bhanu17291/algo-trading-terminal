@@ -57,9 +57,12 @@ def ensemble_predict(X):
     buy_prob = probs[:, 1]
     signals  = []
     for bp in buy_prob:
-        if bp >= 0.55:   signals.append(1)
-        elif bp <= 0.35: signals.append(-1)
-        else:            signals.append(0)
+        if bp >= 0.55:  
+            signals.append(1)
+        elif bp <= 0.35: 
+            signals.append(-1)
+        else:           
+            signals.append(0)
     return np.array(signals), probs.max(axis=1), probs
 
 # ── 1. SHAP (exact logic from your main.py) ────────────────────
@@ -222,8 +225,10 @@ if len(st3) > 0:
     recent = st3['pnl'].tail(5).tolist()
     cl = 0
     for p in reversed(recent):
-        if p < 0: cl += 1
-        else: break
+        if p < 0:
+            cl += 1
+        else: 
+            break
     peak = portfolio['value'].max()
     cur  = portfolio['value'].iloc[-1]
     dd   = round((peak - cur) / peak * 100, 2)
@@ -231,26 +236,42 @@ if len(st3) > 0:
     cs   = round(float(trades['confidence'].tail(5).mean()) * 100, 2)
 
     score = 100 - [0, 10, 25, 40, 60][min(cl, 4)]
-    if dd > 10:   score -= 30
-    elif dd > 5:  score -= 20
-    elif dd > 2:  score -= 10
-    if rw < 20:   score -= 30
-    elif rw < 40: score -= 15
-    if cs < 50:   score -= 10
+    if dd > 10:  
+        score -= 30
+    elif dd > 5: 
+        score -= 20
+    elif dd > 2: 
+        score -= 10
+    if rw < 20:  
+        score -= 30
+    elif rw < 40:
+        score -= 15
+    if cs < 50:  
+        score -= 10
     score = max(0, min(100, score))
 
     alerts = []
-    if cl >= 3:   alerts.append("🚨 Revenge trading risk — 3+ consecutive losses detected")
-    elif cl == 2: alerts.append("⚠️ 2 losses in a row — recency bias may affect next decision")
-    if dd > 5:    alerts.append(f"🔴 Portfolio down {dd}% from peak")
-    elif dd > 2:  alerts.append(f"🟡 Drawdown of {dd}% detected")
-    if rw < 40:   alerts.append("📉 Win rate below 40% in last 5 trades")
-    if cs < 50:   alerts.append("🤔 Model confidence dropping")
+    if cl >= 3:  
+        alerts.append("🚨 Revenge trading risk — 3+ consecutive losses detected")
+    elif cl == 2: 
+        alerts.append("⚠️ 2 losses in a row — recency bias may affect next decision")
+    if dd > 5:   
+        alerts.append(f"🔴 Portfolio down {dd}% from peak")
+    elif dd > 2: 
+        alerts.append(f"🟡 Drawdown of {dd}% detected")
+    if rw < 40:  
+        alerts.append("📉 Win rate below 40% in last 5 trades")
+    if cs < 50:  
+        alerts.append("🤔 Model confidence dropping")
 
-    if score >= 80:   s, m, c = "HEALTHY",     "You're trading well. Continue normally.",            "#22c55e"
-    elif score >= 50: s, m, c = "CAUTION",      "Signs of emotional stress. Consider reducing size.", "#f59e0b"
-    elif score >= 20: s, m, c = "HIGH RISK",    "High emotional risk. Consider pausing.",             "#ef4444"
-    else:             s, m, c = "STOP TRADING", "Critical state. Stop trading now.",                  "#dc2626"
+    if score >= 80:  
+        s, m, c = "HEALTHY",     "You're trading well. Continue normally.",            "#22c55e"
+    elif score >= 50: 
+        s, m, c = "CAUTION",      "Signs of emotional stress. Consider reducing size.", "#f59e0b"
+    elif score >= 20:
+        s, m, c = "HIGH RISK",    "High emotional risk. Consider pausing.",             "#ef4444"
+    else:           
+        s, m, c = "STOP TRADING", "Critical state. Stop trading now.",                  "#dc2626"
 
     psych_cache = {
         "score": score, "status": s, "message": m, "color": c,

@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UP BULLETIN</title>
+
+  <style>
+    :root{
+      --g1:#071226;
+      --g2:#0a2540;
+      --g3:#113b66;
+      --tint: rgba(255,255,255,.10);
+      --stroke: rgba(255,255,255,.18);
+      --shadow: 0 26px 90px rgba(0,0,0,.42);
+      --shadow2: 0 18px 55px rgba(0,0,0,.32);
+    }
+
+    *{ box-sizing:border-box; }
+
+    html, body{ height: 100%; }
+
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+      color:#fff;
+      overflow: hidden; /* ✅ no scroll */
+      background:
+        radial-gradient(1200px 680px at 50% 10%, var(--tint), transparent 62%),
+        linear-gradient(135deg, var(--g1) 0%, var(--g2) 48%, var(--g3) 100%);
+      transition: background 900ms ease;
+    }
+
+    body::before{
+      content:"";
+      position:fixed; inset:-2px;
+      pointer-events:none;
+      z-index:-1;
+      opacity:.95;
+      background:
+        radial-gradient(900px 560px at 18% 22%, rgba(255,255,255,.05), transparent 60%),
+        radial-gradient(900px 560px at 82% 72%, rgba(255,255,255,.05), transparent 60%),
+        linear-gradient(transparent, rgba(0,0,0,.18));
+    }
+
+    /* Loader */
+    .loader{
+      position:fixed;
+      inset:0;
+      z-index:9999;
+      display:grid;
+      place-items:center;
+      background:
+        radial-gradient(1200px 720px at 50% 10%, rgba(255,255,255,.08), transparent 60%),
+        linear-gradient(135deg, #061024 0%, #0a223c 60%, #122a52 100%);
+      transition: opacity 500ms ease, visibility 0s linear 500ms;
+      opacity:1;
+      visibility:visible;
+    }
+    .loader.hide{ opacity:0; visibility:hidden; }
+
+    .loader-card{
+      width:min(560px, 92vw);
+      border-radius:24px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 26px 90px rgba(0,0,0,.45);
+      padding: 22px 20px 18px;
+    }
+    .loader-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 14px;
+    }
+    .loader-brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .loader-badge{
+      width:44px;height:44px;border-radius:16px;
+      display:grid;place-items:center;
+      font-weight:900;
+      background: linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.05));
+      border:1px solid rgba(255,255,255,.22);
+      box-shadow: 0 12px 34px rgba(0,0,0,.25);
+    }
+    .loader-title{
+      margin:0;
+      font-size: 18px;
+      font-weight: 850;
+      letter-spacing:.3px;
+      opacity:.95;
+    }
+    .loader-sub{
+      margin:0;
+      opacity:.75;
+      font-size: 12px;
+    }
+
+    .bars{
+      display:flex;
+      gap:8px;
+      align-items:flex-end;
+      justify-content:center;
+      height: 46px;
+      margin: 16px 0 10px;
+    }
+    .bar{
+      width:10px;
+      height:10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.72);
+      animation: bounce 950ms ease-in-out infinite;
+      box-shadow: 0 0 0 4px rgba(255,255,255,.10);
+    }
+    .bar:nth-child(2){ animation-delay: 120ms; opacity:.9; }
+    .bar:nth-child(3){ animation-delay: 240ms; opacity:.85; }
+    .bar:nth-child(4){ animation-delay: 360ms; opacity:.8; }
+    .bar:nth-child(5){ animation-delay: 480ms; opacity:.75; }
+
+    @keyframes bounce{
+      0%,100%{ transform: translateY(0); height:10px; }
+      50%{ transform: translateY(-18px); height:36px; }
+    }
+
+    .progress{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.14);
+      overflow:hidden;
+    }
+    .progress > span{
+      display:block;
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, rgba(255,255,255,.20), rgba(255,255,255,.85));
+      border-radius:999px;
+      transition: width 260ms ease;
+    }
+    .progress-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-top: 10px;
+      font-size: 12px;
+      opacity:.8;
+    }
+
+    /* Layout wrapper */
+    .wrap{
+      width:min(1320px, 94vw);
+      margin:0 auto;
+      min-height: 100vh;
+      padding: 28px 0 0;
+    }
+
+    .stage{
+      position:relative;
+      height: 100vh;
+      margin-top: 0;
+      overflow: hidden;
+    }
+
+    header{
+      position:absolute;
+      left:50%;
+      top: 36px;
+      transform: translateX(-50%);
+      width:min(980px, 94vw);
+      text-align:center;
+      z-index: 5;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 10px;
+      pointer-events:none;
+    }
+    header *{ pointer-events:auto; }
+
+    .topline{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      opacity:.92;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+
+    .badge{
+      width:48px;height:48px;border-radius:18px;
+      display:grid; place-items:center;
+      background: linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.05));
+      border: 1px solid var(--stroke);
+      box-shadow: 0 12px 36px rgba(0,0,0,.26);
+      backdrop-filter: blur(10px);
+      font-weight:900;
+    }
+
+    h1{
+      margin:0;
+      font-size: clamp(62px, 8.6vw, 128px);
+      line-height: .92;
+      letter-spacing: 1px;
+      text-shadow: 0 18px 75px rgba(0,0,0,.56);
+      position: relative;
+      display:inline-block;
+      transition: transform 220ms ease, text-shadow 350ms ease, filter 350ms ease;
+      cursor: default;
+    }
+    h1::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      bottom:-10px;
+      width: 62%;
+      height: 6px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.0),
+        rgba(255,255,255,0.70),
+        rgba(255,255,255,0.0)
+      );
+      opacity: 0;
+      transition: opacity 300ms ease, width 300ms ease;
+    }
+    h1:hover{
+      transform: translateY(-1px) scale(1.01);
+      text-shadow: 0 22px 90px rgba(0,0,0,.62);
+      filter: drop-shadow(0 12px 26px rgba(255,255,255,.10));
+    }
+    h1:hover::after{
+      opacity: 1;
+      width: 78%;
+      animation: shimmer 1.2s linear infinite;
+      background-size: 200% 100%;
+    }
+    @keyframes shimmer{
+      0%{ background-position: 0% 50%; }
+      100%{ background-position: 200% 50%; }
+    }
+
+    .sub{
+      margin:0;
+      opacity:.84;
+      font-size: clamp(13px, 1.35vw, 17px);
+      max-width: 78ch;
+      line-height:1.55;
+    }
+
+    .arc{
+      position:absolute;
+      inset:0;
+      z-index: 2;
+    }
+
+    /* Cards */
+    .news-card{
+      position:absolute;
+      left:0; top:0;
+      width: 260px;
+      height: 120px;
+      border-radius: 22px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.18);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(14px);
+
+      --hover: 1;
+
+      transform:
+        translate3d(var(--x, 0px), var(--y, 0px), 0px)
+        translate(-50%, -50%)
+        scale(var(--s, 1))
+        scale(var(--hover))
+        rotate(var(--r, 0deg));
+      transform-origin:center;
+
+      will-change: transform, width, height, opacity, filter;
+      transition:
+        transform 840ms cubic-bezier(.2,.9,.15,1),
+        width 560ms cubic-bezier(.2,.9,.15,1),
+        height 560ms cubic-bezier(.2,.9,.15,1),
+        opacity 500ms ease,
+        filter 400ms ease,
+        box-shadow 400ms ease,
+        border-color 350ms ease;
+
+      opacity:.92;
+      filter:saturate(1.04);
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      z-index:1;
+    }
+
+    /* ✅ prevent overlap: no scale-up hover for small cards */
+    .news-card:not(.active):hover{
+      --hover: 1;
+      filter: saturate(1.16) brightness(1.06);
+      box-shadow: 0 26px 85px rgba(0,0,0,.40);
+      border-color: rgba(255,255,255,.30);
+    }
+
+    .news-card.active{
+      width: min(780px, 92vw);
+      height: min(520px, calc(100vh - 230px));
+      opacity: 1;
+      filter: saturate(1.18);
+      box-shadow: var(--shadow);
+      cursor: default;
+      border-color: rgba(255,255,255,.14);
+      --s: 1;
+      --hover: 1;
+      z-index: 1000;
+    }
+
+    .edge-nav{
+      position:absolute;
+      top:50%;
+      transform: translateY(-50%);
+      width:44px;height:44px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.22);
+      background: rgba(0,0,0,.18);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 18px 55px rgba(0,0,0,.35);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      user-select:none;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity 220ms ease, transform 220ms ease, filter 220ms ease;
+      z-index: 50;
+    }
+    .edge-nav span{
+      font-size:22px;
+      line-height:1;
+      font-weight:900;
+      opacity:.95;
+      transform: translateY(-1px);
+    }
+    .edge-prev{ left: 12px; }
+    .edge-next{ right: 12px; }
+
+    .news-card.active .edge-nav{
+      opacity:1;
+      pointer-events:auto;
+    }
+    .news-card.active .edge-nav:hover{
+      filter: brightness(1.1);
+      transform: translateY(-50%) scale(1.05);
+      border-color: rgba(255,255,255,.35);
+    }
+    .news-card.active .edge-nav:active{
+      transform: translateY(-50%) scale(.98);
+    }
+
+    .collapsed,
+    .expanded{ position:absolute; inset:0; }
+
+    .collapsed{
+      display:flex;
+      align-items:flex-end;
+      padding:16px 16px 14px;
+      background:
+        radial-gradient(900px 460px at 30% 10%, rgba(255,255,255,.10), transparent 58%),
+        linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.06));
+      opacity:1;
+      transition: opacity 320ms ease;
+    }
+
+    .mini-title{
+      font-size: 15px;
+      font-weight: 820;
+      line-height:1.18;
+      letter-spacing:.2px;
+      text-shadow: 0 10px 30px rgba(0,0,0,.45);
+      opacity:.98;
+
+      display:-webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow:hidden;
+      overflow-wrap:anywhere;
+      word-break: break-word;
+      max-width:100%;
+    }
+
+    .expanded{
+      height:100%;
+      display:grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap:0;
+      min-width:0;
+      opacity:0;
+      visibility:hidden;
+      transform: scale(.985);
+      transition:
+        opacity 420ms ease,
+        transform 650ms cubic-bezier(.2,.9,.15,1),
+        visibility 0s linear 420ms;
+      pointer-events:none;
+    }
+
+    .news-card.active .collapsed{ opacity: 0; }
+    .news-card.active .expanded{
+      opacity:1;
+      visibility:visible;
+      transform: scale(1);
+      pointer-events:auto;
+      transition:
+        opacity 420ms ease,
+        transform 650ms cubic-bezier(.2,.9,.15,1),
+        visibility 0s;
+    }
+
+    .expanded > *{ min-width:0; }
+
+    .exp-left{
+      padding:16px 18px 14px;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      justify-content:flex-start;
+      gap:10px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .category-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.18);
+      width: fit-content;
+      opacity:.95;
+    }
+    .dot{
+      width:7px;height:7px;border-radius:999px;
+      background: rgba(255,255,255,.85);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.12);
+    }
+
+    .headline{
+      margin:0;
+      font-size: clamp(22px, 2.6vw, 38px);
+      font-weight:900;
+      letter-spacing:.2px;
+      line-height:1.06;
+      text-shadow: 0 16px 50px rgba(0,0,0,.45);
+      overflow-wrap:anywhere;
+      word-break: break-word;
+      max-width:100%;
+    }
+
+    .subhead{
+      margin:0;
+      opacity:.9;
+      font-size:14px;
+      line-height:1.55;
+      max-width:62ch;
+      overflow-wrap:anywhere;
+      word-break: break-word;
+    }
+
+    .exp-right{
+      padding:16px 18px 14px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:12px;
+      background: rgba(255,255,255,.03);
+      min-width:0;
+      border-left: 1px solid rgba(255,255,255,.10);
+    }
+
+    .right-top{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .meta-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      min-width:0;
+    }
+
+    .meta-chip{
+      font-size:12px;
+      padding:7px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.18);
+      opacity:.96;
+      white-space:nowrap;
+    }
+
+    .desc{
+      margin:0;
+      opacity:.92;
+      font-size:14px;
+      line-height:1.6;
+      overflow-wrap:anywhere;
+      word-break: break-word;
+    }
+
+    .section-title{
+      font-size:12px;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      opacity:.78;
+      margin-top: 4px;
+    }
+
+    /* inner scroll allowed; page scroll not */
+    .highlights{
+      margin:0;
+      padding-left:18px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      opacity:.92;
+      font-size:13px;
+      line-height:1.45;
+      max-height: 22vh;
+      overflow:auto;
+      padding-right:6px;
+    }
+
+    .tags{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .tag{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.16);
+      opacity:.92;
+      white-space:nowrap;
+    }
+
+    .source{
+      font-size:12px;
+      opacity:.78;
+      margin:0;
+    }
+
+    .highlights::-webkit-scrollbar{ width:8px; }
+    .highlights::-webkit-scrollbar-thumb{ background: rgba(255,255,255,.18); border-radius:10px; }
+    .highlights::-webkit-scrollbar-track{ background: rgba(255,255,255,.06); border-radius:10px; }
+
+    .actions{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-top:1px solid rgba(255,255,255,.14);
+      padding-top:12px;
+      margin-top:2px;
+    }
+
+    .btn{
+      cursor:pointer;
+      border:none;
+      color:#fff;
+      padding:12px 14px;
+      border-radius:14px;
+      background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.08));
+      border:1px solid rgba(255,255,255,.20);
+      box-shadow: 0 16px 45px rgba(0,0,0,.20);
+      transition: transform 150ms ease, filter 250ms ease;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      font-weight:780;
+      letter-spacing:.2px;
+      min-width:120px;
+      justify-content:center;
+    }
+    .btn:hover{ transform: translateY(-1px); filter: brightness(1.06); }
+    .btn:active{ transform: translateY(0px) scale(.99); }
+
+    footer{
+      position: fixed;
+      left:0; right:0;
+      bottom:14px;
+      display:flex;
+      justify-content:center;
+      opacity:.75;
+      font-size:12px;
+      text-align:center;
+      pointer-events:none;
+      z-index:6;
+    }
+
+    @media (max-width: 980px){
+      .news-card{ width: 240px; height: 112px; }
+      .news-card.active{ height: min(540px, calc(100vh - 220px)); }
+      .expanded{ grid-template-columns: 1fr; }
+      .exp-right{ border-left: none; border-top: 1px solid rgba(255,255,255,.10); }
+      .highlights{ max-height: 24vh; }
+    }
+
+    @media (max-width: 820px){
+      .news-card.active{
+        width: min(760px, 94vw);
+        height: min(560px, calc(100vh - 210px));
+      }
+      .expanded{ grid-template-columns: 1fr; }
+      .highlights{ max-height: 26vh; }
+    }
+
+    @media (max-width: 520px){
+      .news-card{ width: 210px; height: 100px; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .news-card, body{ transition:none !important; }
+      .expanded{ transition:none !important; }
+      .bar{ animation:none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Loader -->
+  <div class="loader" id="loader" aria-label="Loading">
+    <div class="loader-card">
+      <div class="loader-top">
+        <div class="loader-brand">
+          <div class="loader-badge">UP</div>
+          <div>
+            <p class="loader-title">UP BULLETIN</p>
+            <p class="loader-sub">Loading top stories…</p>
+          </div>
+        </div>
+        <div class="loader-sub" id="loaderPct">0%</div>
+      </div>
+
+      <div class="bars" aria-hidden="true">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+
+      <div class="progress" aria-hidden="true"><span id="loaderBar"></span></div>
+      <div class="progress-row">
+        <span id="loaderMsg">Preparing layout</span>
+        <span>Secure • Fast • Local</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section class="stage" id="stage" aria-label="UP Bulletin hero stage">
+      <header id="heroHeader">
+        <div class="topline">
+          <div class="badge">UP</div>
+          <div>Live • Verified • Local</div>
+        </div>
+        <h1 id="heroTitle">UP BULLETIN</h1>
+        <p class="sub">Curved layout • Equal sides • No card above expanded</p>
+      </header>
+
+      <div class="arc" id="arc"></div>
+    </section>
+
+    <footer>© <span id="year"></span> UP BULLETIN • Demo landing page</footer>
+  </div>
+
+  <script>
+    const ROTATE_MS = 8500;
+
+    // ✅ 7 items so inactive = 6 => 3 left + 3 right
+    const news = [
+      {
+        category: "Breaking",
+        time: "2 min ago",
+        updated: "Updated 1 min ago",
+        place: "Lucknow",
+        title: "Metro expansion plans accelerate across key corridors",
+        subhead: "Officials hint at phased commissioning to reduce peak-hour congestion and improve last-mile connectivity.",
+        desc:
+          "Authorities shared an updated timeline for new stations, interchange upgrades, and a phased rollout of feeder routes. " +
+          "The plan prioritizes corridors with high ridership growth and aims to reduce travel time during morning and evening rush.",
+        highlights: [
+          "Phase-wise commissioning proposed to avoid large-scale disruptions.",
+          "Interchange redesign focuses on shorter walking distances and clearer signage.",
+          "Feeder bus routes to be synchronized with peak arrival windows.",
+          "Public consultation window expected to open next week."
+        ],
+        tags: ["Infrastructure", "Transit", "Urban Mobility", "Public Works"],
+        source: "UP Bulletin Desk • City Beat",
+        palette: ["#0b2a6f", "#1476d1", "#0a1428"]
+      },
+      {
+        category: "Politics",
+        time: "18 min ago",
+        updated: "Updated 12 min ago",
+        place: "Prayagraj",
+        title: "Public feedback opens for new civic redevelopment blueprint",
+        subhead: "Residents invited to submit suggestions on traffic flow, safety, and public space upgrades.",
+        desc:
+          "The redevelopment blueprint outlines proposed road widening, pedestrian-first stretches, and upgraded public lighting. " +
+          "Officials say feedback will be reviewed in weekly batches and integrated into the final plan where feasible.",
+        highlights: [
+          "Suggestions accepted via online portal and local ward offices.",
+          "Priority areas include markets, school zones, and high-footfall junctions.",
+          "Pilot implementation could begin with 2–3 model streets."
+        ],
+        tags: ["Governance", "Civic", "Public Feedback"],
+        source: "UP Bulletin Desk • Local Governance",
+        palette: ["#0a4f44", "#11b38b", "#071a18"]
+      },
+      {
+        category: "Weather",
+        time: "35 min ago",
+        updated: "Updated 30 min ago",
+        place: "Kanpur",
+        title: "Heat advisory: hydration and staggered outdoor schedules urged",
+        subhead: "Authorities recommend limiting direct exposure during midday hours and monitoring vulnerable groups.",
+        desc:
+          "The advisory highlights increased risk of heat exhaustion for outdoor workers and the elderly. " +
+          "Health teams have been asked to ensure hydration points and rapid response support during peak temperature windows.",
+        highlights: [
+          "Avoid outdoor activity between 12 PM and 4 PM where possible.",
+          "Keep ORS/water accessible; check on elderly neighbors.",
+          "Schools advised to adjust assembly and sports schedules."
+        ],
+        tags: ["Health", "Weather", "Advisory"],
+        source: "UP Bulletin Desk • Weather Watch",
+        palette: ["#9a3a1f", "#f2b24d", "#1a0f0b"]
+      },
+      {
+        category: "Business",
+        time: "1 hr ago",
+        updated: "Updated 50 min ago",
+        place: "Noida",
+        title: "Startup funding rebounds with focus on AI services",
+        subhead: "Investors prioritize product-led growth and clear revenue pathways as the market steadies.",
+        desc:
+          "Several early-stage companies reported renewed interest from investors, especially in AI-driven enterprise services. " +
+          "Experts say teams with strong retention, predictable pipelines, and disciplined burn rates are seeing faster term-sheet movement.",
+        highlights: [
+          "AI services + automation are leading interest in the region.",
+          "Investors are asking for stronger unit economics and retention data.",
+          "Partnership-led go-to-market models are gaining traction."
+        ],
+        tags: ["Startups", "AI", "Funding", "Noida"],
+        source: "UP Bulletin Desk • Business",
+        palette: ["#23264f", "#7a5cff", "#0b0c1d"]
+      },
+      {
+        category: "Culture",
+        time: "2 hr ago",
+        updated: "Updated 1 hr ago",
+        place: "Varanasi",
+        title: "Heritage walk draws crowds as artisans showcase craft",
+        subhead: "Local guilds highlight weaving, metalwork, and folk art with live demonstrations and storytelling.",
+        desc:
+          "The heritage walk featured curated lanes with live craft demonstrations and short workshops. " +
+          "Organizers plan to expand the route next month to include new artisan clusters and seasonal exhibits.",
+        highlights: [
+          "Hands-on workshops ran hourly with limited seats.",
+          "New artisan clusters may be added to next month’s route.",
+          "Visitors encouraged to support verified local guilds."
+        ],
+        tags: ["Heritage", "Artisans", "Tourism"],
+        source: "UP Bulletin Desk • Culture",
+        palette: ["#5a2a68", "#ff5aa5", "#120817"]
+      },
+      {
+        category: "Sports",
+        time: "3 hr ago",
+        updated: "Updated 2 hr ago",
+        place: "Meerut",
+        title: "District tournament finals set after thrilling semifinal",
+        subhead: "Late surge sealed the result; standout performances set the stage for the championship.",
+        desc:
+          "A tight semifinal went down to the final minutes with momentum swings on both sides. " +
+          "Coaches praised defensive discipline and quick transitions, calling the final a ‘must-watch’ for local fans.",
+        highlights: [
+          "Final scheduled for the weekend; venue security updated.",
+          "Top scorers list to be released ahead of kickoff.",
+          "Coaches call for sportsmanship and crowd safety."
+        ],
+        tags: ["Local Sports", "Tournament", "Meerut"],
+        source: "UP Bulletin Desk • Sports",
+        palette: ["#155a2b", "#3ee37f", "#07110a"]
+      },
+      {
+        category: "Tech",
+        time: "4 hr ago",
+        updated: "Updated 3 hr ago",
+        place: "Ghaziabad",
+        title: "Digital service kiosks roll out to speed up citizen requests",
+        subhead: "New kiosks aim to reduce queues by enabling self-service forms and appointment scheduling.",
+        desc:
+          "Officials said the first batch of kiosks will support common services like certificates, grievances, and appointment booking. " +
+          "Helpdesks will assist first-time users and accessibility features are included for wider adoption.",
+        highlights: [
+          "Self-service forms and status tracking built in.",
+          "Helpdesk staff deployed at high-footfall locations.",
+          "Accessibility options include larger text and audio prompts."
+        ],
+        tags: ["Technology", "Public Services", "Digital"],
+        source: "UP Bulletin Desk • Tech & Civic",
+        palette: ["#0b3a52", "#28b6ff", "#06131a"]
+      }
+    ];
+
+    const arcEl = document.getElementById("arc");
+    const stageEl = document.getElementById("stage");
+    const headerEl = document.getElementById("heroHeader");
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    const loaderEl = document.getElementById("loader");
+    const loaderPct = document.getElementById("loaderPct");
+    const loaderBar = document.getElementById("loaderBar");
+    const loaderMsg = document.getElementById("loaderMsg");
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
+
+    function hexToRgba(hex, alpha){
+      const h = String(hex).replace("#","").trim();
+      const full = h.length===3 ? (h[0]+h[0]+h[1]+h[1]+h[2]+h[2]) : h;
+      const n = parseInt(full, 16);
+      const r = (n>>16)&255, g = (n>>8)&255, b = n&255;
+      return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+    }
+
+    function applyGradientFromPalette(palette){
+      const a = palette[0], b = palette[1], c = palette[2];
+      document.documentElement.style.setProperty("--g1", a);
+      document.documentElement.style.setProperty("--g2", b);
+      document.documentElement.style.setProperty("--g3", c);
+      document.documentElement.style.setProperty("--tint", hexToRgba(b, 0.18));
+    }
+
+    function el(tag, className, text){
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined && text !== null) node.textContent = text;
+      return node;
+    }
+
+    function buildCard(item, idx, activateFn, nextFn, prevFn){
+      const card = el("article", "news-card");
+      card.dataset.idx = String(idx);
+
+      const collapsed = el("div", "collapsed");
+      collapsed.appendChild(el("div", "mini-title", item.title));
+      card.appendChild(collapsed);
+
+      const expanded = el("div", "expanded");
+      expanded.setAttribute("aria-hidden", "true");
+
+      const left = el("div", "exp-left");
+      const pill = el("span", "category-pill");
+      pill.appendChild(el("span", "dot"));
+      const strong = document.createElement("strong");
+      strong.textContent = item.category;
+      pill.appendChild(strong);
+      left.appendChild(pill);
+      left.appendChild(el("h2", "headline", item.title));
+      left.appendChild(el("p", "subhead", item.subhead || ""));
+      expanded.appendChild(left);
+
+      const right = el("div", "exp-right");
+      const rightTop = el("div", "right-top");
+
+      const metaRow = el("div", "meta-row");
+      metaRow.appendChild(el("span", "meta-chip", "⏱️ " + item.time));
+      metaRow.appendChild(el("span", "meta-chip", "📍 " + item.place));
+      metaRow.appendChild(el("span", "meta-chip", "🕒 " + item.updated));
+      rightTop.appendChild(metaRow);
+
+      rightTop.appendChild(el("p", "desc", item.desc));
+
+      rightTop.appendChild(el("div", "section-title", "Key Highlights"));
+      const ul = el("ul", "highlights");
+      (item.highlights || []).forEach(h => ul.appendChild(el("li", "", h)));
+      rightTop.appendChild(ul);
+
+      const tagsWrap = el("div", "tags");
+      (item.tags || []).forEach(t => tagsWrap.appendChild(el("span", "tag", "#" + t)));
+      rightTop.appendChild(tagsWrap);
+
+      rightTop.appendChild(el("p", "source", item.source || ""));
+      right.appendChild(rightTop);
+
+      const actions = el("div", "actions");
+      const prevBtn = el("button", "btn", "← Prev");
+      prevBtn.type = "button";
+      prevBtn.dataset.action = "prev";
+      const nextBtn = el("button", "btn", "Next →");
+      nextBtn.type = "button";
+      nextBtn.dataset.action = "next";
+      actions.appendChild(prevBtn);
+      actions.appendChild(nextBtn);
+      right.appendChild(actions);
+
+      expanded.appendChild(right);
+      card.appendChild(expanded);
+
+      const edgePrev = el("button", "edge-nav edge-prev");
+      edgePrev.type = "button";
+      edgePrev.dataset.action = "prev";
+      edgePrev.setAttribute("aria-label", "Previous story");
+      edgePrev.appendChild(el("span", "", "‹"));
+
+      const edgeNext = el("button", "edge-nav edge-next");
+      edgeNext.type = "button";
+      edgeNext.dataset.action = "next";
+      edgeNext.setAttribute("aria-label", "Next story");
+      edgeNext.appendChild(el("span", "", "›"));
+
+      card.appendChild(edgePrev);
+      card.appendChild(edgeNext);
+
+      card.addEventListener("click", () => activateFn(idx, true));
+      card.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-action]");
+        if(!btn) return;
+        e.stopPropagation();
+        if(btn.dataset.action === "next") nextFn(true);
+        if(btn.dataset.action === "prev") prevFn(true);
+      });
+
+      return card;
+    }
+
+    const cardEls = [];
+    let active = 0;
+    let timer = null;
+
+    /**
+     * RULES enforced:
+     * 1) No small card above expanded card => y positions are within activeTop..activeBottom.
+     * 2) Equal L/R cards => 7 items => 6 inactive => 3 left + 3 right.
+     * 3) Size readable => globalScale min 0.90, and we scale all cards consistently.
+     */
+    function layout(activeIndex, instant){
+      const stageRect = stageEl.getBoundingClientRect();
+      const headerRect = headerEl.getBoundingClientRect();
+
+      const W = stageRect.width;
+      const H = stageRect.height;
+
+      const padX = 18;
+      const gapX = (W < 900) ? 18 : 26;
+      const gapY = (W < 900) ? 14 : 18;
+
+      const topSafe = (headerRect.bottom - stageRect.top) + 18;
+      const bottomSafe = H - 70;
+
+      const baseSmallW = (W <= 520) ? 210 : (W <= 980 ? 240 : 260);
+      const baseSmallH = (W <= 520) ? 100 : (W <= 980 ? 112 : 120);
+
+      const baseActiveW = Math.min(780, W * (W <= 820 ? 0.94 : 0.92));
+      const baseActiveH = Math.min(520, H - (W <= 980 ? 220 : 230));
+
+      const n = cardEls.length;
+      const inactiveCount = n - 1;
+
+      const leftCount = Math.floor(inactiveCount / 2);
+      const rightCount = Math.floor(inactiveCount / 2);
+
+      // active height must accommodate side stacks without pushing any above
+      const requiredSideHeight = (leftCount * baseSmallH) + ((leftCount - 1) * gapY);
+
+      const maxSafeH = Math.max(320, (bottomSafe - topSafe) - 8);
+      const activeH = clamp(Math.max(baseActiveH, requiredSideHeight + 16), 340, maxSafeH);
+
+      // horizontal fit; keep readable min scale
+      const neededWidth = baseActiveW + 2*(baseSmallW + gapX) + 2*padX;
+      const globalScale = clamp(W / neededWidth, 0.90, 1);
+
+      const activeW = baseActiveW * globalScale;
+      const smallW = baseSmallW * globalScale;
+      const smallH = baseSmallH * globalScale;
+
+      const cx = W / 2;
+      let cy = clamp((topSafe + bottomSafe)/2,
+        topSafe + activeH/2 + 8,
+        bottomSafe - activeH/2 - 8
+      );
+
+      const activeTop = cy - activeH/2;
+      const activeBot = cy + activeH/2;
+
+      const inactive = [];
+      for(let i=0;i<n;i++) if(i !== activeIndex) inactive.push(i);
+
+      const leftIdxs = inactive.slice(0, leftCount);
+      const rightIdxs = inactive.slice(leftCount, leftCount + rightCount);
+
+      // apply active class + aria
+      for(let i=0;i<n;i++){
+        const c = cardEls[i];
+        c.classList.toggle("active", i === activeIndex);
+        const expanded = c.querySelector(".expanded");
+        if (expanded) expanded.setAttribute("aria-hidden", i === activeIndex ? "false" : "true");
+      }
+
+      // place active
+      const activeEl = cardEls[activeIndex];
+      activeEl.style.setProperty("--x", cx + "px");
+      activeEl.style.setProperty("--y", cy + "px");
+      activeEl.style.setProperty("--s", globalScale.toFixed(3));
+      activeEl.style.setProperty("--r", "0deg");
+      activeEl.style.opacity = "1";
+      activeEl.style.zIndex = "1000";
+
+      // side x positions (guaranteed no overlap with active)
+      const baseLeftX  = cx - activeW/2 - smallW/2 - gapX;
+      const baseRightX = cx + activeW/2 + smallW/2 + gapX;
+
+      // safe outward curve amplitude
+      const leftRoom = (baseLeftX - smallW/2) - padX;
+      const rightRoom = (W - padX) - (baseRightX + smallW/2);
+      const curveAmp = clamp(Math.min(leftRoom, rightRoom, 44), 0, 44);
+
+      // RULE #1: y range strictly within active span
+      const yMin = activeTop + smallH/2;
+      const yMax = activeBot - smallH/2;
+
+      function yPositions(count){
+        if(count <= 1) return [ (yMin + yMax) / 2 ];
+        const out = [];
+        for(let k=0;k<count;k++){
+          const t = k/(count-1);
+          out.push(yMin + (yMax - yMin) * t);
+        }
+        return out;
+      }
+
+      const leftYs = yPositions(leftCount);
+      const rightYs = yPositions(rightCount);
+
+      const spanHalf = Math.max(1, (yMax - yMin)/2);
+      const centerY = (yMin + yMax)/2;
+
+      function placeSideCard(cardIndex, side, y){
+        const c = cardEls[cardIndex];
+
+        const t = clamp(Math.abs(y - centerY)/spanHalf, 0, 1);
+        const bend = easeOutQuad(t);
+
+        // curve OUTWARD only
+        const x = (side === "left")
+          ? (baseLeftX - curveAmp * bend)
+          : (baseRightX + curveAmp * bend);
+
+        // subtle tilt for arc feel
+        const tilt = (side === "left" ? -1 : 1) * (bend * 4.5);
+
+        c.style.setProperty("--x", x.toFixed(2) + "px");
+        c.style.setProperty("--y", y.toFixed(2) + "px");
+        c.style.setProperty("--s", globalScale.toFixed(3));
+        c.style.setProperty("--r", tilt.toFixed(2) + "deg");
+        c.style.opacity = "0.92";
+        c.style.zIndex = "200";
+      }
+
+      leftIdxs.forEach((idx, i) => placeSideCard(idx, "left", leftYs[i]));
+      rightIdxs.forEach((idx, i) => placeSideCard(idx, "right", rightYs[i]));
+
+      if(instant){
+        for (let i=0;i<cardEls.length;i++) cardEls[i].style.transition = "none";
+        requestAnimationFrame(() => {
+          for (let i=0;i<cardEls.length;i++) cardEls[i].style.transition = "";
+        });
+      }
+    }
+
+    function restartAuto(){
+      if(timer) clearTimeout(timer);
+      const tick = () => {
+        next(false);
+        timer = setTimeout(tick, ROTATE_MS);
+      };
+      timer = setTimeout(tick, ROTATE_MS);
+    }
+
+    function activateFn(idx, userInitiated){
+      active = ((idx % news.length) + news.length) % news.length;
+      applyGradientFromPalette(news[active].palette);
+      layout(active, false);
+      if(userInitiated) restartAuto();
+    }
+
+    function next(userInitiated){ activateFn(active + 1, userInitiated); }
+    function prev(userInitiated){ activateFn(active - 1, userInitiated); }
+
+    // Build cards
+    news.forEach((item, idx) => {
+      const card = buildCard(item, idx, activateFn, next, prev);
+      arcEl.appendChild(card);
+      cardEls.push(card);
+    });
+
+    function runLoader(){
+      let pct = 0;
+      const stages = [
+        { at: 20, msg: "Loading headlines" },
+        { at: 45, msg: "Building cards" },
+        { at: 70, msg: "Setting layout" },
+        { at: 92, msg: "Final touches" }
+      ];
+
+      const t = setInterval(() => {
+        pct = Math.min(99, pct + Math.ceil(Math.random()*6));
+        loaderPct.textContent = pct + "%";
+        loaderBar.style.width = pct + "%";
+        for (let i=0;i<stages.length;i++){
+          if (pct >= stages[i].at) loaderMsg.textContent = stages[i].msg;
+        }
+      }, 180);
+
+      window.addEventListener("load", () => {
+        clearInterval(t);
+        requestAnimationFrame(() => {
+          loaderMsg.textContent = "Ready";
+          loaderPct.textContent = "100%";
+          loaderBar.style.width = "100%";
+          setTimeout(() => loaderEl.classList.add("hide"), 450);
+        });
+      });
+    }
+
+    window.addEventListener("resize", () => layout(active, true));
+
+    runLoader();
+    activateFn(0, false);
+    layout(0, true);
+    restartAuto();
+  </script>
+</body>
+</html>

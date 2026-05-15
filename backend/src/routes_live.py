@@ -20,7 +20,7 @@ from sqlalchemy import func
 from datetime import date
 import yfinance as yf
 from src.database import get_db, Signal, Trade, EquityCurvePoint, ModelVersion
-import json, os
+import json,os
 
 router = APIRouter()
 META_PATH = os.path.join("models", "model_meta.json")
