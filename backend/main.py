@@ -1,16 +1,23 @@
 """
-main.py — DB-FIRST VERSION
-Replaces all CSV / JSON cache reads with PostgreSQL queries via db_data.py.
-All original endpoints preserved. Signal refreshes every 5 min during market hours.
+main.py — DB-FIRST VERSION (fixed)
+- Single shared engine from src.database
+- init_db() creates all ORM tables on startup
+- No stale module-level df/trades/portfolio
+- Single scheduler via start_scheduler()
 """
 
 from src.routes_live import router as live_router
 from src.scheduler import start_scheduler
-from src.db_data import ensure_ohlcv_table, get_features_df, get_trades_df, get_portfolio_df
+from src.database import init_db
+from src.db_data import (
+    ensure_ohlcv_table,
+    get_features_df,
+    get_trades_df,
+    get_portfolio_df,
+)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from apscheduler.schedulers.background import BackgroundScheduler
 import pandas as pd
 import numpy as np
 import joblib
@@ -34,8 +41,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Ensure DB table exists before anything else ───────────────────────────────
-ensure_ohlcv_table()
+# ── Create ALL tables on startup ──────────────────────────────────────────────
+init_db()             # creates signals, trades, equity_curve (ORM models)
+ensure_ohlcv_table()  # creates ohlcv_features (raw SQL)
 
 # ── Load models ───────────────────────────────────────────────────────────────
 MODELS_DIR = "../models"
@@ -49,35 +57,54 @@ w_xgb      = weights["w_xgb"]
 w_lgbm     = weights["w_lgbm"]
 w_cat      = weights["w_cat"]
 
-# ── Load data FROM DB (replaces CSV reads) ────────────────────────────────────
-print("[STARTUP] Loading features from PostgreSQL...")
-df        = get_features_df()
-trades    = get_trades_df()
-portfolio = get_portfolio_df()
+print("[STARTUP] DB tables ready. Models loaded.")
 
-if trades.empty:
-    trades = pd.DataFrame(columns=["date", "action", "price", "pnl", "confidence"])
-trades["pnl"]        = pd.to_numeric(trades.get("pnl", 0), errors="coerce").fillna(0)
-trades["confidence"] = pd.to_numeric(trades.get("confidence", 0), errors="coerce").fillna(0)
-
-print(f"[STARTUP] Loaded {len(df)} feature rows, {len(trades)} trades from DB.")
-
-# ── Cache paths (SHAP only — everything else is now DB-live) ──────────────────
-CACHE_DIR       = "../data/cache"
-SHAP_CACHE_PATH = f"{CACHE_DIR}/shap_cache.json"
+# ── Cache paths ───────────────────────────────────────────────────────────────
+CACHE_DIR         = "../data/cache"
+SHAP_CACHE_PATH   = f"{CACHE_DIR}/shap_cache.json"
 SIGNAL_CACHE_PATH = f"{CACHE_DIR}/signal_cache.json"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
+# ── SHAP (cached — expensive to recompute) ────────────────────────────────────
+if os.path.exists(SHAP_CACHE_PATH):
+    print("[STARTUP] Loading SHAP from cache...")
+    with open(SHAP_CACHE_PATH) as f:
+        _shap_cache = json.load(f)
+else:
+    print("[STARTUP] Computing SHAP (one-time)...")
+    _df_shap    = get_features_df()
+    explainer   = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(_df_shap[FEATURES].tail(100))
+    latest_shap = explainer.shap_values(_df_shap[FEATURES].iloc[-1:])
+    pred        = int(model.predict(_df_shap[FEATURES].iloc[-1:])[0])
+    sv = np.array(latest_shap[pred] if isinstance(latest_shap, list) else latest_shap).flatten()
+    gv = np.abs(np.array(shap_values[0] if isinstance(shap_values, list) else shap_values)).mean(axis=0).flatten()
+    _shap_cache = {
+        "latest_signal_explanation": sorted(
+            [{"feature": f, "shap_value": round(float(sv[i]), 4),
+              "abs_value": round(abs(float(sv[i])), 4),
+              "direction": "positive" if sv[i] > 0 else "negative"}
+             for i, f in enumerate(FEATURES)],
+            key=lambda x: x["abs_value"], reverse=True,
+        ),
+        "global_importance": sorted(
+            [{"feature": f, "importance": round(float(gv[i]), 4)}
+             for i, f in enumerate(FEATURES)],
+            key=lambda x: x["importance"], reverse=True,
+        ),
+        "predicted_class": pred,
+    }
+    with open(SHAP_CACHE_PATH, "w") as f:
+        json.dump(_shap_cache, f)
+    print("[STARTUP] SHAP cached.")
 
 # ── Ensemble helpers ──────────────────────────────────────────────────────────
 def ensemble_proba(X):
     import xgboost as xgb
-    p1 = model.predict(xgb.DMatrix(X))          # xgb returns 1D proba for binary
+    p1 = model.predict(xgb.DMatrix(X))
     p2 = lgbm_model.predict(X)
     p3 = cat_model.predict_proba(X)[:, 1]
-    # Align shapes: p1, p2, p3 are all buy-probabilities (scalar per row)
     buy_prob = w_xgb * p1 + w_lgbm * p2 + w_cat * p3
-    # Stack into [N, 2] for downstream compatibility
     return np.column_stack([1 - buy_prob, buy_prob])
 
 
@@ -95,69 +122,6 @@ def ensemble_predict(X):
     return np.array(signals), probs.max(axis=1), probs
 
 
-# ── SHAP (cached — expensive to recompute) ────────────────────────────────────
-if os.path.exists(SHAP_CACHE_PATH):
-    print("[STARTUP] Loading SHAP from cache...")
-    with open(SHAP_CACHE_PATH) as f:
-        _shap_cache = json.load(f)
-else:
-    print("[STARTUP] Computing SHAP (one-time)...")
-    explainer   = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(df[FEATURES].tail(100))
-    latest_shap = explainer.shap_values(df[FEATURES].iloc[-1:])
-    pred        = int(model.predict(df[FEATURES].iloc[-1:])[0])
-    sv = np.array(latest_shap[pred] if isinstance(latest_shap, list) else latest_shap).flatten()
-    gv = np.abs(np.array(shap_values[0] if isinstance(shap_values, list) else shap_values)).mean(axis=0).flatten()
-    _shap_cache = {
-        "latest_signal_explanation": sorted(
-            [{"feature": f, "shap_value": round(float(sv[i]), 4),
-              "abs_value": round(abs(float(sv[i])), 4),
-              "direction": "positive" if sv[i] > 0 else "negative"}
-             for i, f in enumerate(FEATURES)],
-            key=lambda x: x["abs_value"], reverse=True
-        ),
-        "global_importance": sorted(
-            [{"feature": f, "importance": round(float(gv[i]), 4)}
-             for i, f in enumerate(FEATURES)],
-            key=lambda x: x["importance"], reverse=True
-        ),
-        "predicted_class": pred
-    }
-    with open(SHAP_CACHE_PATH, "w") as f:
-        json.dump(_shap_cache, f)
-    print("[STARTUP] SHAP cached.")
-
-
-# ── Client portfolios (now served from DB via /api/performance/live) ──────────
-# The old CSV-based simulation is replaced by paper_engine.py writing to DB.
-# get_client_data() kept for backward compatibility with /clients endpoint.
-
-def get_client_data():
-    from src.database import SessionLocal, Trade as DBTrade, EquityCurvePoint
-    db = SessionLocal()
-    try:
-        def _trades(profile):
-            rows = db.query(DBTrade).filter(DBTrade.profile == profile).order_by(DBTrade.id).all()
-            return [{"date": t.entry_date if t.status == "OPEN" else t.exit_date,
-                     "action": "BUY" if t.status == "OPEN" else "SELL",
-                     "price": t.entry_price if t.status == "OPEN" else t.exit_price,
-                     "qty": int(t.position_size / t.entry_price) if t.entry_price else 0,
-                     "pnl": round(t.pnl_abs, 2) if t.pnl_abs else 0,
-                     "confidence": round(t.signal_confidence, 4) if t.signal_confidence else 0,
-                     "exit_type": t.exit_reason or ""} for t in rows]
-
-        def _portfolio(profile):
-            rows = (db.query(EquityCurvePoint)
-                      .filter(EquityCurvePoint.profile == profile)
-                      .order_by(EquityCurvePoint.id).all())
-            return [{"date": p.date, "value": p.equity} for p in rows]
-
-        return (_trades("QUANT"), _portfolio("QUANT"),
-                _trades("MACRO"), _portfolio("MACRO"))
-    finally:
-        db.close()
-
-
 # ── Market status ─────────────────────────────────────────────────────────────
 IST      = pytz.timezone("Asia/Kolkata")
 live_log = []
@@ -173,12 +137,11 @@ def is_market_open():
 
 
 def run_trading_loop():
-    """Runs every 5 min, skips if market closed. Uses latest DB row."""
+    """Runs every 5 min via scheduler, skips if market closed."""
     try:
         if not is_market_open():
             print(f"[{datetime.now(IST).strftime('%H:%M:%S')}] Market closed — skipping")
             return
-        # Re-fetch latest row from DB each cycle
         latest_df = get_features_df(days=5)
         if latest_df.empty:
             return
@@ -188,23 +151,71 @@ def run_trading_loop():
         price  = round(float(latest_df["Close"].iloc[-1]), 2)
         log    = f"ML → {action} (p={conf}) | price={price} | time={datetime.now(IST).strftime('%H:%M:%S')}"
         print(log)
-        live_log.append({"time": datetime.now(IST).strftime("%H:%M:%S"),
-                          "action": action, "confidence": conf,
-                          "price": price, "log": log})
+        live_log.append({
+            "time": datetime.now(IST).strftime("%H:%M:%S"),
+            "action": action, "confidence": conf,
+            "price": price, "log": log,
+        })
         if len(live_log) > 50:
             live_log.pop(0)
     except Exception as e:
         print(f"[run_trading_loop ERROR] {e}")
 
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(run_trading_loop, "interval", minutes=5, max_instances=1, coalesce=True)
-scheduler.start()
-
-
+# ── Startup event — single scheduler ─────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
     start_scheduler()
+
+
+# ── Client data helper ────────────────────────────────────────────────────────
+def get_client_data():
+    from src.database import SessionLocal, Trade as DBTrade, EquityCurvePoint
+    db = SessionLocal()
+    try:
+        def _trades(profile):
+            rows = db.query(DBTrade).filter(DBTrade.profile == profile).order_by(DBTrade.id).all()
+            return [{"date": str(t.entry_date if t.status == "OPEN" else t.exit_date),
+                     "action": "BUY" if t.status == "OPEN" else "SELL",
+                     "price": t.entry_price if t.status == "OPEN" else t.exit_price,
+                     "qty": int(t.position_size / t.entry_price) if t.entry_price else 0,
+                     "pnl": round(t.pnl_abs, 2) if t.pnl_abs else 0,
+                     "confidence": round(t.signal_confidence, 4) if t.signal_confidence else 0,
+                     "exit_type": t.exit_reason or ""} for t in rows]
+
+        def _portfolio(profile):
+            rows = (db.query(EquityCurvePoint)
+                      .filter(EquityCurvePoint.profile == profile)
+                      .order_by(EquityCurvePoint.id).all())
+            return [{"date": str(p.date), "value": p.equity} for p in rows]
+
+        return (_trades("QUANT"), _portfolio("QUANT"),
+                _trades("MACRO"), _portfolio("MACRO"))
+    finally:
+        db.close()
+
+
+def calc_stats(tl, pl):
+    initial = 1_000_000
+    final   = pl[-1]["value"] if pl else initial
+    sells   = [t for t in tl if t.get("action") == "SELL"]
+    wins2   = [t for t in sells if t.get("pnl", 0) > 0]
+    pk, mdd = initial, 0.0
+    for r in pl:
+        if r["value"] > pk: pk = r["value"]
+        mdd = max(mdd, (pk - r["value"]) / pk * 100)
+    return {
+        "initial_capital": initial, "final_value": round(final, 2),
+        "total_return":    round((final - initial) / initial * 100, 2),
+        "total_trades":    len(tl), "wins": len(wins2),
+        "losses":          len(sells) - len(wins2),
+        "win_rate":        round(len(wins2) / len(sells) * 100, 1) if sells else 0,
+        "best_trade":      round(max((t.get("pnl", 0) for t in sells), default=0), 2),
+        "worst_trade":     round(min((t.get("pnl", 0) for t in sells), default=0), 2),
+        "avg_trade":       round(sum(t.get("pnl", 0) for t in sells) / len(sells), 2) if sells else 0,
+        "total_pnl":       round(sum(t.get("pnl", 0) for t in sells), 2),
+        "max_drawdown":    round(mdd, 2),
+    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -218,20 +229,20 @@ def root():
 
 @app.get("/signal")
 def get_latest_signal():
-    """Live signal — reads from DB signal cache written by incremental_learn."""
     from src.database import SessionLocal, Signal
+    from datetime import date
     db = SessionLocal()
     try:
-        from datetime import date
         today = date.today().isoformat()
         s = db.query(Signal).filter(Signal.date == today).first()
         if s:
+            latest_df = get_features_df(days=5)
             return {
                 "signal":     s.signal,
                 "confidence": round(s.confidence * 100, 2),
                 "buy_prob":   round(s.confidence * 100, 2),
                 "date":       s.date,
-                "close":      round(float(df["Close"].iloc[-1]), 2),
+                "close":      round(float(latest_df["Close"].iloc[-1]), 2),
                 "source":     "db",
             }
     finally:
@@ -252,10 +263,7 @@ def get_latest_signal():
 
 @app.get("/portfolio")
 def get_portfolio():
-    port = get_portfolio_df(profile="STRATEGY")
-    if port.empty:
-        # fallback: use QUANT
-        port = get_portfolio_df(profile="QUANT")
+    port = get_portfolio_df(profile="QUANT")
     port["date"] = port["date"].astype(str)
     return port.to_dict(orient="records")
 
@@ -292,12 +300,12 @@ def get_stats():
 @app.get("/pnl")
 def get_pnl():
     t  = get_trades_df()
-    st = t[t.get("pnl", pd.Series(dtype=float)) != 0] if "pnl" in t.columns else pd.DataFrame()
+    st = t[t["pnl"] != 0] if "pnl" in t.columns else pd.DataFrame()
     return {
-        "cumulative_pnl": round(float(st["pnl"].sum()), 2)    if len(st) > 0 else 0,
-        "best_trade":     round(float(st["pnl"].max()), 2)    if len(st) > 0 else 0,
-        "worst_trade":    round(float(st["pnl"].min()), 2)    if len(st) > 0 else 0,
-        "avg_trade":      round(float(st["pnl"].mean()), 2)   if len(st) > 0 else 0,
+        "cumulative_pnl": round(float(st["pnl"].sum()), 2)  if len(st) > 0 else 0,
+        "best_trade":     round(float(st["pnl"].max()), 2)  if len(st) > 0 else 0,
+        "worst_trade":    round(float(st["pnl"].min()), 2)  if len(st) > 0 else 0,
+        "avg_trade":      round(float(st["pnl"].mean()), 2) if len(st) > 0 else 0,
         "last_log":       "",
     }
 
@@ -354,16 +362,16 @@ def get_psychology():
     if cs < 50: score -= 10
     score = max(0, min(100, score))
     alerts = []
-    if cl >= 3: alerts.append("🚨 Revenge trading risk — 3+ consecutive losses detected")
-    elif cl == 2: alerts.append("⚠️ 2 losses in a row — recency bias may affect next decision")
-    if dd > 5: alerts.append(f"🔴 Portfolio down {dd}% from peak")
-    elif dd > 2: alerts.append(f"🟡 Drawdown of {dd}% detected")
-    if rw < 40: alerts.append("📉 Win rate below 40% in last 5 trades")
-    if cs < 50: alerts.append("🤔 Model confidence dropping")
-    if score >= 80: s, m, c = "HEALTHY", "Trading well. Continue normally.", "#22c55e"
-    elif score >= 50: s, m, c = "CAUTION", "Signs of stress. Reduce size.", "#f59e0b"
-    elif score >= 20: s, m, c = "HIGH RISK", "High emotional risk. Consider pausing.", "#ef4444"
-    else: s, m, c = "STOP TRADING", "Critical state. Stop trading now.", "#dc2626"
+    if cl >= 3: alerts.append("Revenge trading risk — 3+ consecutive losses detected")
+    elif cl == 2: alerts.append("2 losses in a row — recency bias may affect next decision")
+    if dd > 5: alerts.append(f"Portfolio down {dd}% from peak")
+    elif dd > 2: alerts.append(f"Drawdown of {dd}% detected")
+    if rw < 40: alerts.append("Win rate below 40% in last 5 trades")
+    if cs < 50: alerts.append("Model confidence dropping")
+    if score >= 80:   s, m, c = "HEALTHY",      "Trading well. Continue normally.",          "#22c55e"
+    elif score >= 50: s, m, c = "CAUTION",       "Signs of stress. Reduce size.",             "#f59e0b"
+    elif score >= 20: s, m, c = "HIGH RISK",     "High emotional risk. Consider pausing.",    "#ef4444"
+    else:             s, m, c = "STOP TRADING",  "Critical state. Stop trading now.",         "#dc2626"
     return {"score": score, "status": s, "message": m, "color": c,
             "consecutive_losses": cl, "drawdown_pct": dd,
             "recent_winrate": rw, "conf_score": cs, "alerts": alerts}
@@ -374,12 +382,12 @@ def get_shap():
     return _shap_cache
 
 
-# ── Walk-forward (unchanged — uses in-memory df) ──────────────────────────────
+# ── Walk-forward ──────────────────────────────────────────────────────────────
 def run_walk_forward_engine():
     from xgboost import XGBClassifier
     from sklearn.preprocessing import LabelEncoder
     from sklearn.metrics import accuracy_score
-    wf_df = get_features_df()   # fresh from DB
+    wf_df = get_features_df()
     data, n, min_train, test_size = wf_df.dropna(), len(wf_df.dropna()), 500, 200
     windows, all_equity, wn, cursor = [], [], 1, min_train
     while cursor + test_size <= n:
@@ -469,30 +477,6 @@ def trigger_walkforward():
             "alpha": r["summary"]["avg_alpha"]}
 
 
-# ── Clients (now DB-backed) ───────────────────────────────────────────────────
-def calc_stats(tl, pl):
-    initial = 1_000_000
-    final   = pl[-1]["value"] if pl else initial
-    sells   = [t for t in tl if t.get("action") == "SELL"]
-    wins2   = [t for t in sells if t.get("pnl", 0) > 0]
-    pk, mdd = initial, 0.0
-    for r in pl:
-        if r["value"] > pk: pk = r["value"]
-        mdd = max(mdd, (pk - r["value"]) / pk * 100)
-    return {
-        "initial_capital": initial, "final_value": round(final, 2),
-        "total_return":    round((final - initial) / initial * 100, 2),
-        "total_trades":    len(tl), "wins": len(wins2),
-        "losses":          len(sells) - len(wins2),
-        "win_rate":        round(len(wins2) / len(sells) * 100, 1) if sells else 0,
-        "best_trade":      round(max((t.get("pnl", 0) for t in sells), default=0), 2),
-        "worst_trade":     round(min((t.get("pnl", 0) for t in sells), default=0), 2),
-        "avg_trade":       round(sum(t.get("pnl", 0) for t in sells) / len(sells), 2) if sells else 0,
-        "total_pnl":       round(sum(t.get("pnl", 0) for t in sells), 2),
-        "max_drawdown":    round(mdd, 2),
-    }
-
-
 @app.get("/clients")
 def get_clients():
     qt, qp, mt, mp = get_client_data()
@@ -536,7 +520,6 @@ def get_clients_compare():
 
 @app.post("/admin/backfill")
 def trigger_backfill():
-    """One-time: seeds trades + equity_curve from full OHLCV history in DB."""
     from src.paper_engine import backfill_from_db
     backfill_from_db()
     return {"status": "backfill complete"}
@@ -544,7 +527,6 @@ def trigger_backfill():
 
 @app.post("/admin/fetch-latest")
 def trigger_fetch_latest():
-    """Manually trigger a data fetch + feature engineering → DB."""
     from src.incremental_learn import fetch_and_store_latest
     df = fetch_and_store_latest()
     return {"status": "ok", "rows": len(df)}
@@ -552,7 +534,6 @@ def trigger_fetch_latest():
 
 @app.get("/admin/db-status")
 def db_status():
-    """Quick check: how many rows are in the DB and when was the last update."""
     from src.db_data import get_last_stored_date
     from src.database import SessionLocal, Signal, Trade
     last = get_last_stored_date()
