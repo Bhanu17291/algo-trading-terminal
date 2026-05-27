@@ -32,15 +32,10 @@ app.include_router(live_router, prefix="/api")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://algo-trading-terminal.vercel.app",
-        "https://*.vercel.app",
-    ],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # ── Create ALL tables on startup ──────────────────────────────────────────────
 init_db()             # creates signals, trades, equity_curve (ORM models)
 ensure_ohlcv_table()  # creates ohlcv_features (raw SQL)
@@ -101,7 +96,7 @@ else:
 # ── Ensemble helpers ──────────────────────────────────────────────────────────
 def ensemble_proba(X):
     import xgboost as xgb
-    p1 = model.predict(xgb.DMatrix(X))
+    p1 = model.predict_proba(X)[:, 1]
     p2 = lgbm_model.predict(X)
     p3 = cat_model.predict_proba(X)[:, 1]
     buy_prob = w_xgb * p1 + w_lgbm * p2 + w_cat * p3
@@ -148,7 +143,7 @@ def run_trading_loop():
         signals, confs, _ = ensemble_predict(latest_df[FEATURES].iloc[-1:])
         conf   = round(float(confs[0]), 3)
         action = {1: "BUY", -1: "SELL", 0: "HOLD"}.get(int(signals[0]), "HOLD")
-        price  = round(float(latest_df["Close"].iloc[-1]), 2)
+        price  = round(float(latest_df["close"].iloc[-1]), 2)
         log    = f"ML → {action} (p={conf}) | price={price} | time={datetime.now(IST).strftime('%H:%M:%S')}"
         print(log)
         live_log.append({
@@ -242,7 +237,7 @@ def get_latest_signal():
                 "confidence": round(s.confidence * 100, 2),
                 "buy_prob":   round(s.confidence * 100, 2),
                 "date":       s.date,
-                "close":      round(float(latest_df["Close"].iloc[-1]), 2),
+                "close":      round(float(latest_df["close"].iloc[-1]), 2),
                 "source":     "db",
             }
     finally:
@@ -256,7 +251,7 @@ def get_latest_signal():
         "confidence": round(float(confs[0]) * 100, 2),
         "buy_prob":   round(float(probs[0][1]) * 100, 2),
         "date":       str(latest_df.index[-1].date()),
-        "close":      round(float(latest_df["Close"].iloc[-1]), 2),
+        "close":      round(float(latest_df["close"].iloc[-1]), 2),
         "source":     "live",
     }
 
@@ -328,11 +323,13 @@ def market_status():
 @app.get("/indicators")
 def get_indicators():
     latest = get_features_df(days=150)
-    cols   = [c for c in ["Close", "rsi", "bb_upper", "bb_lower", "sma20", "sma50"] if c in latest.columns]
+    cols   = [c for c in ["close", "rsi", "bb_upper", "bb_lower", "sma20", "sma50"] if c in latest.columns]
     data   = latest[cols].tail(100).copy()
     data.index.name = "date"
     data   = data.reset_index()
     data["date"] = data["date"].astype(str)
+    data   = data.replace([float("inf"), float("-inf")], None)
+    data   = data.where(data.notna(), None)
     return data.to_dict(orient="records")
 
 
@@ -346,32 +343,50 @@ def get_psychology():
     recent = st["pnl"].tail(5).tolist()
     cl = 0
     for p in reversed(recent):
-        if p < 0: cl += 1
-        else: break
+        if p < 0:
+            cl += 1
+        else: 
+            break
     peak = port["value"].max() if not port.empty else 1_000_000
     cur  = port["value"].iloc[-1] if not port.empty else 1_000_000
     dd   = round((peak - cur) / peak * 100, 2)
     rw   = round(sum(1 for p in recent if p > 0) / len(recent) * 100, 1) if recent else 0
     cs   = round(float(t["confidence"].tail(5).mean()) * 100, 2) if "confidence" in t.columns else 50
     score = 100 - [0, 10, 25, 40, 60][min(cl, 4)]
-    if dd > 10: score -= 30
-    elif dd > 5: score -= 20
-    elif dd > 2: score -= 10
-    if rw < 20: score -= 30
-    elif rw < 40: score -= 15
-    if cs < 50: score -= 10
+    if dd > 10:
+        score -= 30
+    elif dd > 5:
+        score -= 20
+    elif dd > 2:
+        score -= 10
+    if rw < 20: 
+        score -= 30
+    elif rw < 40: 
+        score -= 15
+    if cs < 50:
+        score -= 10
     score = max(0, min(100, score))
     alerts = []
-    if cl >= 3: alerts.append("Revenge trading risk — 3+ consecutive losses detected")
-    elif cl == 2: alerts.append("2 losses in a row — recency bias may affect next decision")
-    if dd > 5: alerts.append(f"Portfolio down {dd}% from peak")
-    elif dd > 2: alerts.append(f"Drawdown of {dd}% detected")
-    if rw < 40: alerts.append("Win rate below 40% in last 5 trades")
-    if cs < 50: alerts.append("Model confidence dropping")
-    if score >= 80:   s, m, c = "HEALTHY",      "Trading well. Continue normally.",          "#22c55e"
-    elif score >= 50: s, m, c = "CAUTION",       "Signs of stress. Reduce size.",             "#f59e0b"
-    elif score >= 20: s, m, c = "HIGH RISK",     "High emotional risk. Consider pausing.",    "#ef4444"
-    else:             s, m, c = "STOP TRADING",  "Critical state. Stop trading now.",         "#dc2626"
+    if cl >= 3:
+        alerts.append("Revenge trading risk — 3+ consecutive losses detected")
+    elif cl == 2: 
+        alerts.append("2 losses in a row — recency bias may affect next decision")
+    if dd > 5:
+        alerts.append(f"Portfolio down {dd}% from peak")
+    elif dd > 2:
+        alerts.append(f"Drawdown of {dd}% detected")
+    if rw < 40: 
+        alerts.append("Win rate below 40% in last 5 trades")
+    if cs < 50:
+        alerts.append("Model confidence dropping")
+    if score >= 80:  
+        s, m, c = "HEALTHY",      "Trading well. Continue normally.",          "#22c55e"
+    elif score >= 50: 
+        s, m, c = "CAUTION",       "Signs of stress. Reduce size.",             "#f59e0b"
+    elif score >= 20: 
+        s, m, c = "HIGH RISK",     "High emotional risk. Consider pausing.",    "#ef4444"
+    else:           
+        s, m, c = "STOP TRADING",  "Critical state. Stop trading now.",         "#dc2626"
     return {"score": score, "status": s, "message": m, "color": c,
             "consecutive_losses": cl, "drawdown_pct": dd,
             "recent_winrate": rw, "conf_score": cs, "alerts": alerts}
@@ -404,7 +419,7 @@ def run_walk_forward_engine():
         cap, pos, wt, eq = 100000.0, None, [], []
         for i in range(len(te)):
             bpi = float(bp[i]); conf = float(probs[i].max())
-            price = float(te["Close"].iloc[i]); date_s = str(te.index[i].date())
+            price = float(te["close"].iloc[i]); date_s = str(te.index[i].date())
             sig = "BUY" if bpi >= 0.55 else "SELL" if bpi <= 0.35 else "HOLD"
             if pos is None:
                 if sig == "BUY" and conf >= 0.55:
@@ -433,8 +448,8 @@ def run_walk_forward_engine():
         for e in eq:
             if e["value"] > pk: pk = e["value"]
             mdd = max(mdd, (pk - e["value"]) / pk * 100)
-        nr = round((float(te["Close"].iloc[-1]) - float(te["Close"].iloc[0])) /
-                   float(te["Close"].iloc[0]) * 100, 2)
+        nr = round((float(te["close"].iloc[-1]) - float(te["close"].iloc[0])) /
+                   float(te["close"].iloc[0]) * 100, 2)
         windows.append({"window": wn,
             "train_period": f"{str(tr.index[0].date())} → {str(tr.index[-1].date())}",
             "test_period":  f"{str(te.index[0].date())} → {str(te.index[-1].date())}",
@@ -497,16 +512,16 @@ def get_clients_compare():
     qt, qp, mt, mp = get_client_data()
     qm = {r["date"]: r["value"] for r in qp}
     mm = {r["date"]: r["value"] for r in mp}
-    wf_df = get_features_df(days=10)
-    ip    = float(wf_df["Close"].iloc[0]) if not wf_df.empty else 1
-    combined = [
-        {"date": d, "QUANT": qm.get(d), "MACRO": mm.get(d),
-         "NSEI": round(1_000_000 * float(wf_df.loc[d, "Close"]) / ip, 2)
-         if d in wf_df.index.astype(str).values else None}
-        for d in sorted(set(qm) | set(mm))
-    ]
     full_df = get_features_df()
-    nr  = (float(full_df["Close"].iloc[-1]) - float(full_df["Close"].iloc[0])) / float(full_df["Close"].iloc[0]) * 100
+    full_df.index = full_df.index.astype(str)
+    ip = float(full_df["close"].iloc[0]) if not full_df.empty else 1
+    combined = []
+    for d in sorted(set(qm) | set(mm)):
+        nsei_val = None
+        if d in full_df.index:
+            nsei_val = round(1_000_000 * float(full_df.loc[d, "close"]) / ip, 2)
+        combined.append({"date": d, "QUANT": qm.get(d), "MACRO": mm.get(d), "NSEI": nsei_val})
+    nr  = (float(full_df["close"].iloc[-1]) - float(full_df["close"].iloc[0])) / float(full_df["close"].iloc[0]) * 100
     qs  = calc_stats(qt, qp)
     ms  = calc_stats(mt, mp)
     return {"quant_stats": qs, "macro_stats": ms, "chart_data": combined,
