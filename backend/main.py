@@ -16,6 +16,9 @@ import shap
 from datetime import datetime
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -172,7 +175,25 @@ def run_trading_loop():
 # ── Startup event — single scheduler ─────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
+    import asyncio
+    from src.incremental_learn import fetch_and_store_latest, generate_and_store_signal
+
     start_scheduler()
+
+    # Seed DB with full history if empty
+    async def seed_db():
+        import asyncio
+        loop = asyncio.get_event_loop()
+        try:
+            logger.info("[startup] Seeding DB with OHLCV data...")
+            df = await loop.run_in_executor(None, fetch_and_store_latest)
+            if not df.empty:
+                await loop.run_in_executor(None, generate_and_store_signal, df)
+                logger.info("[startup] DB seeded successfully.")
+        except Exception as e:
+            logger.error(f"[startup] DB seed failed: {e}")
+
+    asyncio.create_task(seed_db())
 
 
 # ── Client data helper ────────────────────────────────────────────────────────
@@ -209,7 +230,8 @@ def calc_stats(tl, pl):
     wins2   = [t for t in sells if t.get("pnl", 0) > 0]
     pk, mdd = initial, 0.0
     for r in pl:
-        if r["value"] > pk: pk = r["value"]
+        if r["value"] > pk: 
+            pk = r["value"]
         mdd = max(mdd, (pk - r["value"]) / pk * 100)
     return {
         "initial_capital": initial, "final_value": round(final, 2),
@@ -244,12 +266,13 @@ def get_latest_signal():
         s = db.query(Signal).filter(Signal.date == today).first()
         if s:
             latest_df = get_features_df(days=5)
+            close = round(float(latest_df["close"].iloc[-1]), 2) if not latest_df.empty and "close" in latest_df.columns else 0
             return {
                 "signal":     s.signal,
                 "confidence": round(s.confidence * 100, 2),
                 "buy_prob":   round(s.confidence * 100, 2),
                 "date":       s.date,
-                "close":      round(float(latest_df["close"].iloc[-1]), 2),
+                "close":      close,
                 "source":     "db",
             }
     finally:
@@ -257,6 +280,15 @@ def get_latest_signal():
 
     # Fallback: compute live
     latest_df = get_features_df(days=5)
+    if latest_df.empty:
+        return {"signal": "LOADING", "confidence": 0, "buy_prob": 0,
+                "date": date.today().isoformat(), "close": 0, "source": "no_data"}
+
+    missing = [f for f in FEATURES if f not in latest_df.columns]
+    if missing:
+        return {"signal": "LOADING", "confidence": 0, "buy_prob": 0,
+                "date": date.today().isoformat(), "close": 0, "source": "features_missing"}
+
     signals, confs, probs = ensemble_predict(latest_df[FEATURES].iloc[-1:])
     return {
         "signal":     {1: "BUY", -1: "SELL", 0: "HOLD"}.get(int(signals[0]), "HOLD"),
@@ -458,7 +490,8 @@ def run_walk_forward_engine():
         ret = round((fv - 100000) / 100000 * 100, 2)
         pk, mdd = 100000, 0.0
         for e in eq:
-            if e["value"] > pk: pk = e["value"]
+            if e["value"] > pk:
+                pk = e["value"]
             mdd = max(mdd, (pk - e["value"]) / pk * 100)
         nr = round((float(te["close"].iloc[-1]) - float(te["close"].iloc[0])) /
                    float(te["close"].iloc[0]) * 100, 2)
@@ -526,16 +559,24 @@ def get_clients_compare():
     mm = {r["date"]: r["value"] for r in mp}
     full_df = get_features_df()
     full_df.index = full_df.index.astype(str)
-    ip = float(full_df["close"].iloc[0]) if not full_df.empty else 1
+
     combined = []
-    for d in sorted(set(qm) | set(mm)):
-        nsei_val = None
-        if d in full_df.index:
-            nsei_val = round(1_000_000 * float(full_df.loc[d, "close"]) / ip, 2)
-        combined.append({"date": d, "QUANT": qm.get(d), "MACRO": mm.get(d), "NSEI": nsei_val})
-    nr  = (float(full_df["close"].iloc[-1]) - float(full_df["close"].iloc[0])) / float(full_df["close"].iloc[0]) * 100
-    qs  = calc_stats(qt, qp)
-    ms  = calc_stats(mt, mp)
+    nr = 0.0
+
+    if not full_df.empty and "close" in full_df.columns:
+        ip = float(full_df["close"].iloc[0])
+        for d in sorted(set(qm) | set(mm)):
+            nsei_val = None
+            if d in full_df.index:
+                nsei_val = round(1_000_000 * float(full_df.loc[d, "close"]) / ip, 2)
+            combined.append({"date": d, "QUANT": qm.get(d), "MACRO": mm.get(d), "NSEI": nsei_val})
+        nr = (float(full_df["close"].iloc[-1]) - float(full_df["close"].iloc[0])) / float(full_df["close"].iloc[0]) * 100
+    else:
+        for d in sorted(set(qm) | set(mm)):
+            combined.append({"date": d, "QUANT": qm.get(d), "MACRO": mm.get(d), "NSEI": None})
+
+    qs = calc_stats(qt, qp)
+    ms = calc_stats(mt, mp)
     return {"quant_stats": qs, "macro_stats": ms, "chart_data": combined,
             "quant_trades": qt, "macro_trades": mt,
             "quant_portfolio": qp, "macro_portfolio": mp,
