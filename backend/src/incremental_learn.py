@@ -202,19 +202,28 @@ def fetch_and_store_latest():
     if last_date is not None:
         existing = get_features_df(days=120)  # need history for rolling windows
         existing.index.name = "date"
-        existing = existing.rename(columns={"Open": "open", "High": "high",
-                                             "Low": "low", "Close": "close",
-                                             "Volume": "volume"})
+
+        # FIX: DB returns lowercase columns — normalize both to Title Case for engineer_features
+        existing = existing.rename(columns={
+            "open": "Open", "high": "High",
+            "low": "Low", "close": "Close",
+            "volume": "Volume"
+        })
         raw.columns = [c.lower() for c in raw.columns]
+        raw = raw.rename(columns={
+            "open": "Open", "high": "High",
+            "low": "Low", "close": "Close",
+            "volume": "Volume"
+        })
         combined = pd.concat([existing, raw]).sort_index()
         combined = combined[~combined.index.duplicated(keep="last")]
-        combined = combined.rename(columns={"open": "Open", "high": "High",
-                                             "low": "Low", "close": "Close",
-                                             "volume": "Volume"})
     else:
         raw.columns = [c.lower() for c in raw.columns]
-        combined = raw.rename(columns={"open": "Open", "high": "High",
-                                        "low": "Low", "close": "Close", "volume": "Volume"})
+        combined = raw.rename(columns={
+            "open": "Open", "high": "High",
+            "low": "Low", "close": "Close",
+            "volume": "Volume"
+        })
 
     # Engineer features on full combined set
     featured = engineer_features(combined)
