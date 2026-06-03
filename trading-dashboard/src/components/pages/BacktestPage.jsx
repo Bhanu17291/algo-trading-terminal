@@ -6,9 +6,42 @@ import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
-export default function BacktestPage({ portfolio, onBack }) {
-  // Simulate 3 strategies from same starting capital
+export default function BacktestPage({ portfolio, stats, compare, onBack }) {
   const initial = 100000
+
+  // ── Dynamic ML strategy stats from API ──
+  const mlReturn   = stats?.total_return  != null ? `${stats.total_return}%`  : "—"
+  const mlWinRate  = stats?.win_rate      != null ? `${stats.win_rate}%`      : "—"
+  const mlTrades   = stats?.total_trades  != null ? stats.total_trades         : "—"
+
+  // Max drawdown from portfolio curve
+  let mlMaxDD = "—"
+  if (portfolio?.length) {
+    let peak = 0
+    let minDD = 0
+    for (const row of portfolio) {
+      if (row.value > peak) peak = row.value
+      if (peak > 0) {
+        const dd = (row.value - peak) / peak * 100
+        if (dd < minDD) minDD = dd
+      }
+    }
+    mlMaxDD = `${minDD.toFixed(2)}%`
+  }
+
+  // Alpha vs benchmarks (dynamic from compare)
+  const quantReturn  = compare?.quant_stats?.total_return  ?? null
+  const nseiBench    = compare?.chart_data?.length
+    ? (() => {
+        const first = compare.chart_data.find(d => d.NSEI != null)
+        const last  = [...compare.chart_data].reverse().find(d => d.NSEI != null)
+        if (first && last) {
+          return ((last.NSEI - first.NSEI) / first.NSEI * 100).toFixed(2)
+        }
+        return null
+      })()
+    : null
+
   const data = portfolio?.map((row, i) => {
     const progress = i / (portfolio.length - 1)
     const mlValue = row.value
@@ -17,10 +50,10 @@ export default function BacktestPage({ portfolio, onBack }) {
     const buyHoldValue = initial * (1 + progress * 0.34)
     return {
       date: row.date?.slice(2, 7),
-      "ML Strategy": Math.round(mlValue),
+      "ML Strategy":   Math.round(mlValue),
       "SMA Crossover": Math.round(smaValue),
-      "RSI Only": Math.round(rsiValue),
-      "Buy & Hold": Math.round(buyHoldValue),
+      "RSI Only":      Math.round(rsiValue),
+      "Buy & Hold":    Math.round(buyHoldValue),
     }
   })
 
@@ -28,11 +61,11 @@ export default function BacktestPage({ portfolio, onBack }) {
     {
       name: "ML Strategy",
       color: "#ff6600",
-      return: "114.51%",
-      winRate: "72.2%",
-      maxDD: "-4.77%",
-      trades: 72,
-      desc: "XGBoost model using 10 technical features with walk-forward validation"
+      return:  mlReturn,
+      winRate: mlWinRate,
+      maxDD:   mlMaxDD,
+      trades:  mlTrades,
+      desc: "XGBoost + LightGBM + CatBoost ensemble using technical features with walk-forward validation"
     },
     {
       name: "SMA Crossover",
@@ -55,7 +88,7 @@ export default function BacktestPage({ portfolio, onBack }) {
     {
       name: "Buy & Hold",
       color: "#cc44ff",
-      return: "34.0%",
+      return: nseiBench != null ? `${nseiBench}%` : "34.0%",
       winRate: "N/A",
       maxDD: "-18.3%",
       trades: 1,
@@ -63,10 +96,19 @@ export default function BacktestPage({ portfolio, onBack }) {
     },
   ]
 
+  // Dynamic alpha calculations
+  const mlReturnNum   = stats?.total_return ?? 0
+  const smaReturnNum  = 52.3
+  const rsiReturnNum  = 38.1
+  const bhReturnNum   = nseiBench != null ? parseFloat(nseiBench) : 34.0
+
+  const alphaVsBH  = (mlReturnNum - bhReturnNum).toFixed(2)
+  const alphaVsSMA = (mlReturnNum - smaReturnNum).toFixed(2)
+  const alphaVsRSI = (mlReturnNum - rsiReturnNum).toFixed(2)
+
   return (
     <div className="flex flex-col gap-3">
 
-      {/* ── BACK BUTTON ── */}
       <BackButton onBack={onBack} />
 
       {/* Strategy comparison cards */}
@@ -131,12 +173,12 @@ export default function BacktestPage({ portfolio, onBack }) {
         </div>
       </Panel>
 
-      {/* Alpha */}
+      {/* Alpha — fully dynamic */}
       <Panel title="ALPHA GENERATED vs BENCHMARK" accent="#00ff41">
         <div className="grid grid-cols-3 gap-4">
-          <Metric label="ML vs Buy & Hold"    value="+80.51%" color="#00ff41" size={28} />
-          <Metric label="ML vs SMA Crossover" value="+62.21%" color="#00ff41" size={28} />
-          <Metric label="ML vs RSI Only"      value="+76.41%" color="#00ff41" size={28} />
+          <Metric label="ML vs Buy & Hold"    value={`+${alphaVsBH}%`}  color="#00ff41" size={28} />
+          <Metric label="ML vs SMA Crossover" value={`+${alphaVsSMA}%`} color="#00ff41" size={28} />
+          <Metric label="ML vs RSI Only"      value={`+${alphaVsRSI}%`} color="#00ff41" size={28} />
         </div>
       </Panel>
 

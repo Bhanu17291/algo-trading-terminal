@@ -643,3 +643,94 @@ def rebuild_features():
 
     return {"status": "rebuilt", "rows": len(featured), "signal": sig,
             "confidence": round(conf * 100, 2)}# fixed 
+# ── ADD THIS ENDPOINT TO main.py ─────────────────────────────────────────────
+# Place it near the bottom with the other GET endpoints
+
+@app.get("/meta")
+def get_meta():
+    """Returns dynamic system metadata — replaces all hardcoded frontend values."""
+    import yfinance as yf
+    from src.db_data import get_features_df
+
+    # ── Model version from file ──
+    version_path = f"{MODELS_DIR}/version.txt"
+    if os.path.exists(version_path):
+        with open(version_path) as f:
+            model_version = f.read().strip()
+    else:
+        # Auto-detect from most recently modified model file
+        try:
+            mtime = max(
+                os.path.getmtime(f"{MODELS_DIR}/{fn}")
+                for fn in ["xgb_model.pkl", "lgbm_model.pkl", "cat_model.pkl"]
+                if os.path.exists(f"{MODELS_DIR}/{fn}")
+            )
+            model_version = f"v{datetime.fromtimestamp(mtime).strftime('%Y.%m')}"
+        except Exception:
+            model_version = "v5.0"
+        # Write it for next time
+        with open(version_path, "w") as f:
+            f.write(model_version)
+
+    # ── Feature count ──
+    feature_count = len(FEATURES)
+
+    # ── Training date range from DB ──
+    try:
+        df = get_features_df()
+        if not df.empty:
+            start_year = df.index[0].year
+            end_year   = df.index[-1].year
+            total_days = len(df)
+            backtest_range = f"{start_year}–{end_year}"
+        else:
+            start_year, end_year, total_days = 2020, 2026, 1481
+            backtest_range = "2020–2026"
+    except Exception:
+        start_year, end_year, total_days = 2020, 2026, 1481
+        backtest_range = "2020–2026"
+
+    # ── Optuna trials from log or default ──
+    optuna_log = "../data/optuna_trials.json"
+    if os.path.exists(optuna_log):
+        with open(optuna_log) as f:
+            trial_data = json.load(f)
+        optuna_trials = trial_data.get("trials_per_model", 80)
+    else:
+        optuna_trials = 80
+
+    # ── NSEI benchmark return ──
+    try:
+        nsei = yf.download("^NSEI", start=f"{start_year}-01-01", progress=False, auto_adjust=True)
+        if not nsei.empty:
+            p0 = float(nsei["Close"].dropna().iloc[0])
+            p1 = float(nsei["Close"].dropna().iloc[-1])
+            nsei_return = round((p1 - p0) / p0 * 100, 2)
+        else:
+            nsei_return = None
+    except Exception:
+        nsei_return = None
+
+    # ── Strategy quote (configurable) ──
+    quote_path = "../data/strategy_quote.txt"
+    if os.path.exists(quote_path):
+        with open(quote_path) as f:
+            strategy_quote = f.read().strip()
+    else:
+        strategy_quote = (
+            "In markets, the disciplined mind with data beats intuition every time. "
+            "Our ML ensemble doesn't guess — it calculates."
+        )
+
+    return {
+        "model_version":   model_version,
+        "feature_count":   feature_count,
+        "total_days":      total_days,
+        "backtest_range":  backtest_range,
+        "start_year":      start_year,
+        "end_year":        end_year,
+        "optuna_trials":   optuna_trials,
+        "nsei_return":     nsei_return,
+        "strategy_quote":  strategy_quote,
+        "footer_label":    f"ML ENSEMBLE {model_version} · {total_days:,} DAYS · {feature_count} FEATURES",
+    }

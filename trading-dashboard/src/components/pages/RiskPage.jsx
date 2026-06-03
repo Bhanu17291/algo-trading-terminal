@@ -1,29 +1,57 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Panel from "../shared/Panel"
 import Metric from "../shared/Metric"
 import BackButton from "../layout/BackButton"
 
 const mono = "'Courier New', monospace"
 
-const PROFILES = {
-  CUSTOM: { capital: 100000, riskPct: 2,   entry: 23000, stop: 22500, winRate: 60,   avgWin: 3000,  avgLoss: 2000  },
-  QUANT:  { capital: 100000, riskPct: 3,   entry: 23000, stop: 22310, winRate: 96.6, avgWin: 5000,  avgLoss: 2500  },
-  MACRO:  { capital: 100000, riskPct: 1.5, entry: 23000, stop: 22655, winRate: 90,   avgWin: 3500,  avgLoss: 1500  },
+// Static profile templates — entry/stop are illustrative defaults
+const PROFILE_TEMPLATES = {
+  CUSTOM: { capital: 100000, riskPct: 2,   entry: 23000, stop: 22500 },
+  QUANT:  { capital: 100000, riskPct: 3,   entry: 23000, stop: 22310 },
+  MACRO:  { capital: 100000, riskPct: 1.5, entry: 23000, stop: 22655 },
 }
 
-export default function RiskPage({ compare, onBack }) {
-  const [profile, setProfile] = useState("CUSTOM")
+export default function RiskPage({ stats, trades, compare, onBack }) {
+  const [profile,    setProfile]    = useState("CUSTOM")
   const [capital,    setCapital]    = useState(100000)
   const [riskPct,    setRiskPct]    = useState(2)
   const [entryPrice, setEntryPrice] = useState(23000)
   const [stopLoss,   setStopLoss]   = useState(22500)
-  const [winRate,    setWinRate]    = useState(72.2)
-  const [avgWin,     setAvgWin]     = useState(3431)
-  const [avgLoss,    setAvgLoss]    = useState(2134)
+  const [winRate,    setWinRate]    = useState(50)
+  const [avgWin,     setAvgWin]     = useState(3000)
+  const [avgLoss,    setAvgLoss]    = useState(2000)
+  const [loaded,     setLoaded]     = useState(false)
+
+  // Seed from live stats on mount
+  useEffect(() => {
+    if (!loaded && stats) {
+      setWinRate(stats.win_rate ?? 50)
+      setLoaded(true)
+    }
+  }, [stats, loaded])
+
+  // Seed avg win/loss from trade history
+  useEffect(() => {
+    if (!trades?.length) return
+    const sells = trades.filter(t => t.action === "SELL")
+    const wins  = sells.filter(t => t.pnl > 0)
+    const losses = sells.filter(t => t.pnl < 0)
+    if (wins.length)   setAvgWin(Math.round(wins.reduce((s, t) => s + t.pnl, 0) / wins.length))
+    if (losses.length) setAvgLoss(Math.round(Math.abs(losses.reduce((s, t) => s + t.pnl, 0) / losses.length)))
+  }, [trades])
+
+  // Build PROFILES dynamically using live stats
+  const buildProfiles = () => ({
+    CUSTOM: { ...PROFILE_TEMPLATES.CUSTOM, winRate: 50,                     avgWin: 3000, avgLoss: 2000 },
+    QUANT:  { ...PROFILE_TEMPLATES.QUANT,  winRate: stats?.win_rate ?? 72,  avgWin, avgLoss },
+    MACRO:  { ...PROFILE_TEMPLATES.MACRO,  winRate: compare?.macro_stats?.win_rate ?? 68, avgWin, avgLoss },
+  })
 
   const loadProfile = (p) => {
     setProfile(p)
-    const pr = PROFILES[p]
+    const profiles = buildProfiles()
+    const pr = profiles[p]
     setCapital(pr.capital); setRiskPct(pr.riskPct)
     setEntryPrice(pr.entry); setStopLoss(pr.stop)
     setWinRate(pr.winRate); setAvgWin(pr.avgWin); setAvgLoss(pr.avgLoss)
@@ -50,12 +78,17 @@ export default function RiskPage({ compare, onBack }) {
       <Panel title="LOAD CLIENT RISK PROFILE">
         <div style={{ fontSize: 11, color: "#666", fontFamily: mono, marginBottom: 12 }}>
           Load preset parameters from a client profile or configure manually
+          {stats && (
+            <span style={{ color: "#ff6600", marginLeft: 8 }}>
+              · Live win rate: {stats.win_rate}% loaded
+            </span>
+          )}
         </div>
         <div className="flex gap-3">
           {[
-            ["CUSTOM",  "#ffd700", "Manual config"],
-            ["QUANT",   "#ff6600", "Aggressive · 3% risk · 95% size"],
-            ["MACRO",   "#00aaff", "Conservative · 1.5% risk · 60% size"],
+            ["CUSTOM", "#ffd700", "Manual config"],
+            ["QUANT",  "#ff6600", `Aggressive · 3% risk · Win ${stats?.win_rate ?? "—"}%`],
+            ["MACRO",  "#00aaff", `Conservative · 1.5% risk · Win ${compare?.macro_stats?.win_rate ?? "—"}%`],
           ].map(([p, c, desc]) => (
             <button key={p}
               className={`btn flex-1 ${profile === p ? "" : "btn-outline"}`}
@@ -121,8 +154,8 @@ export default function RiskPage({ compare, onBack }) {
       <div className="grid grid-cols-4 gap-3">
         {[
           ["RISK AMOUNT",    `₹${riskAmount.toLocaleString()}`,     "#ff3131", `${riskPct}% of capital`      ],
-          ["POSITION SIZE",  `${positionSize} units`,                "#ff6600", `₹${positionValue.toLocaleString()} (${positionPct}%)`],
-          ["KELLY %",        `${kelly}%`,                            "#00aaff", `Half Kelly: ${halfKelly}%`  ],
+          ["POSITION SIZE",  `${positionSize} units`,               "#ff6600", `₹${positionValue.toLocaleString()} (${positionPct}%)`],
+          ["KELLY %",        `${kelly}%`,                           "#00aaff", `Half Kelly: ${halfKelly}%`  ],
           ["EXPECTED VALUE", `₹${Number(ev).toLocaleString()}`,     Number(ev) > 0 ? "#00ff41" : "#ff3131", "Per trade average"],
         ].map(([l, v, c, sub]) => (
           <div key={l} className="stat bg-base-200 rounded-box border border-base-300"
@@ -139,12 +172,12 @@ export default function RiskPage({ compare, onBack }) {
         <Panel title="TRADE RISK BREAKDOWN" accent="#ff3131">
           <div className="flex flex-col gap-3">
             {[
-              ["Capital at Risk",    `₹${riskAmount.toLocaleString()}`,                                            "#ff3131"],
+              ["Capital at Risk",    `₹${riskAmount.toLocaleString()}`,                                              "#ff3131"],
               ["Stop Distance",      `₹${priceDiff.toLocaleString()} (${((priceDiff / entryPrice) * 100).toFixed(2)}%)`, "#ffd700"],
-              ["Position Value",     `₹${positionValue.toLocaleString()}`,                                         "#ff6600"],
-              ["Capital Exposure",   `${positionPct}%`,                                                            positionPct > 20 ? "#ff3131" : "#00ff41"],
-              ["Max Loss",           `₹${riskAmount.toLocaleString()}`,                                            "#ff3131"],
-              ["2R Profit Target",   `₹${(riskAmount * 2).toLocaleString()}`,                                      "#00ff41"],
+              ["Position Value",     `₹${positionValue.toLocaleString()}`,                                           "#ff6600"],
+              ["Capital Exposure",   `${positionPct}%`,                                                              positionPct > 20 ? "#ff3131" : "#00ff41"],
+              ["Max Loss",           `₹${riskAmount.toLocaleString()}`,                                              "#ff3131"],
+              ["2R Profit Target",   `₹${(riskAmount * 2).toLocaleString()}`,                                        "#00ff41"],
             ].map(([l, v, c]) => (
               <div key={l} className="flex justify-between border-b border-base-300 pb-2">
                 <span style={{ fontSize: 12, color: "#666", fontFamily: mono }}>{l}</span>
@@ -157,12 +190,12 @@ export default function RiskPage({ compare, onBack }) {
         <Panel title="EDGE ANALYSIS" accent="#00aaff">
           <div className="flex flex-col gap-3">
             {[
-              ["Win Rate",          `${winRate}%`,         winRate >= 60 ? "#00ff41" : "#ffd700"    ],
-              ["Win/Loss Ratio",    winLossRatio.toFixed(2), winLossRatio >= 1.5 ? "#00ff41" : "#ffd700"],
-              ["Profit Factor",     profitFactor,           profitFactor >= 1.5 ? "#00ff41" : "#ffd700"],
+              ["Win Rate",          `${winRate}%`,          winRate >= 60 ? "#00ff41" : "#ffd700"       ],
+              ["Win/Loss Ratio",    winLossRatio.toFixed(2), winLossRatio >= 1.5 ? "#00ff41" : "#ffd700" ],
+              ["Profit Factor",     profitFactor,            profitFactor >= 1.5 ? "#00ff41" : "#ffd700" ],
               ["Expected Value",    `₹${Number(ev).toLocaleString()}`, Number(ev) > 0 ? "#00ff41" : "#ff3131"],
-              ["Full Kelly %",      `${kelly}%`,            "#00aaff"                                ],
-              ["Half Kelly (Rec.)", `${halfKelly}%`,        "#00ff41"                                ],
+              ["Full Kelly %",      `${kelly}%`,             "#00aaff"                                   ],
+              ["Half Kelly (Rec.)", `${halfKelly}%`,         "#00ff41"                                   ],
             ].map(([l, v, c]) => (
               <div key={l} className="flex justify-between border-b border-base-300 pb-2">
                 <span style={{ fontSize: 12, color: "#666", fontFamily: mono }}>{l}</span>

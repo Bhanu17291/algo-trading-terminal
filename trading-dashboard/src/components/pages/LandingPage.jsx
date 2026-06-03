@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import BackButton from "../layout/BackButton"
+import { fetchJson } from "../../config/api"
 
 const mono = "'Courier New', monospace"
 
@@ -7,20 +7,25 @@ const TICKER_ITEMS = [
   "NSEI", "RELIANCE", "TCS", "HDFC", "INFOSYS", "ICICIBANK", "WIPRO", "BAJFINANCE", "AXISBANK", "SBIN"
 ]
 
-// Maps bottom nav labels → page IDs (must match App.jsx CARD_PAGE_MAP)
 const BOTTOM_NAV = [
   { label: "DASHBOARD", dest: "dashboard" },
-  { label: "SIGNAL",    dest: "signal" },    // → explainer
-  { label: "PORTFOLIO", dest: "portfolio" }, // → dashboard
-  { label: "CLIENTS",   dest: "clients" },   // → clients
-  { label: "ML",        dest: "explainer" }, // → explainer
-  { label: "RISK",      dest: "risk" },      // → risk
+  { label: "SIGNAL",    dest: "signal" },
+  { label: "PORTFOLIO", dest: "portfolio" },
+  { label: "CLIENTS",   dest: "clients" },
+  { label: "ML",        dest: "explainer" },
+  { label: "RISK",      dest: "risk" },
 ]
 
 export default function LandingPage({ onEnter, signal, stats, compare }) {
-  const [time, setTime] = useState("")
-  const [marketOpen, setMarketOpen] = useState(false)
+  const [time, setTime]               = useState("")
+  const [marketOpen, setMarketOpen]   = useState(false)
   const [tickerOffset, setTickerOffset] = useState(0)
+  const [meta, setMeta]               = useState(null)
+
+  // Fetch dynamic meta
+  useEffect(() => {
+    fetchJson("/meta").then(setMeta).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const tick = () => {
@@ -45,6 +50,14 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
     return () => clearInterval(i)
   }, [])
 
+  // Dynamic derived values
+  const featureCount   = meta?.feature_count   ?? "—"
+  const optuna         = meta?.optuna_trials    ?? "—"
+  const backtestRange  = meta?.backtest_range   ?? "—"
+  const nseiBenchmark  = meta?.nsei_return != null ? `+${meta.nsei_return}%` : "—"
+  const footerLabel    = meta?.footer_label     ?? "ML ENSEMBLE · LOADING..."
+  const strategyQuote  = meta?.strategy_quote   ?? ""
+
   const cards = [
     {
       id: "signal",
@@ -56,8 +69,8 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
       desc: "ML ensemble BUY/SELL signals with 85%+ confidence using XGBoost, LightGBM & CatBoost",
       stats: [
         { label: "CONFIDENCE", value: signal ? `${signal.confidence}%` : "—" },
-        { label: "LAST PRICE", value: signal ? `₹${signal.close?.toLocaleString()}` : "—" },
-        { label: "AS OF", value: signal ? signal.date : "—" },
+        { label: "LAST PRICE", value: signal?.close ? `₹${signal.close.toLocaleString()}` : "—" },
+        { label: "AS OF",      value: signal ? signal.date : "—" },
       ]
     },
     {
@@ -69,9 +82,9 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
       valueColor: "#00aaff",
       desc: "Real-time portfolio tracking with P&L analysis, equity curves and drawdown monitoring",
       stats: [
-        { label: "FINAL VALUE", value: stats ? `₹${stats.final_value?.toLocaleString()}` : "—" },
-        { label: "WIN RATE", value: stats ? `${stats.win_rate}%` : "—" },
-        { label: "TOTAL TRADES", value: stats ? stats.total_trades : "—" },
+        { label: "FINAL VALUE",   value: stats ? `₹${stats.final_value?.toLocaleString()}` : "—" },
+        { label: "WIN RATE",      value: stats ? `${stats.win_rate}%` : "—" },
+        { label: "TOTAL TRADES",  value: stats ? stats.total_trades : "—" },
       ]
     },
     {
@@ -83,9 +96,9 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
       valueColor: "#ff6600",
       desc: "Two trading profiles — QUANT (aggressive) vs MACRO (conservative) — running on same ML signals",
       stats: [
-        { label: "QUANT RETURN", value: compare ? `+${compare.quant_stats?.total_return}%` : "—" },
-        { label: "MACRO RETURN", value: compare ? `+${compare.macro_stats?.total_return}%` : "—" },
-        { label: "NSEI BENCHMARK", value: "+167.48%" },
+        { label: "QUANT RETURN",    value: compare ? `+${compare.quant_stats?.total_return}%` : "—" },
+        { label: "MACRO RETURN",    value: compare ? `+${compare.macro_stats?.total_return}%` : "—" },
+        { label: "NSEI BENCHMARK",  value: nseiBenchmark },
       ]
     },
     {
@@ -93,13 +106,13 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
       title: "ML INTELLIGENCE",
       icon: "🧠",
       accent: "#ffd700",
-      value: "27 FEATURES",
+      value: featureCount !== "—" ? `${featureCount} FEATURES` : "LOADING...",
       valueColor: "#ffd700",
       desc: "SHAP explainability shows exactly why each trade signal was generated — full transparency",
       stats: [
-        { label: "MODELS", value: "XGB+LGB+CAT" },
-        { label: "OPTUNA TRIALS", value: "80 / MODEL" },
-        { label: "VALIDATION", value: "WALK-FORWARD" },
+        { label: "MODELS",        value: "XGB+LGB+CAT" },
+        { label: "OPTUNA TRIALS", value: optuna !== "—" ? `${optuna} / MODEL` : "—" },
+        { label: "VALIDATION",    value: "WALK-FORWARD" },
       ]
     },
     {
@@ -107,13 +120,13 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
       title: "RISK & BACKTEST",
       icon: "🛡",
       accent: "#ff6600",
-      value: "72.2% WIN RATE",
+      value: stats ? `${stats.win_rate}% WIN RATE` : "LOADING...",
       valueColor: "#ff6600",
       desc: "Position sizing, scenario analysis, historical backtesting and walk-forward out-of-sample testing",
       stats: [
-        { label: "MAX DRAWDOWN", value: "< 15%" },
-        { label: "SHARPE RATIO", value: "1.8+" },
-        { label: "BACKTEST YEARS", value: "2020–2026" },
+        { label: "MAX DRAWDOWN",    value: "< 15%" },
+        { label: "SHARPE RATIO",    value: "1.8+" },
+        { label: "BACKTEST YEARS",  value: backtestRange },
       ]
     },
   ]
@@ -192,19 +205,20 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
           <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: -1, lineHeight: 1, color: "#ff6600" }}>
             TERMINAL
           </div>
-          <div style={{ fontSize: 12, color: "#555", marginTop: 12, maxWidth: 420, lineHeight: 1.6 }}>
-            "In markets, the disciplined mind with data beats intuition every time.
-            Our ML ensemble doesn't guess — it calculates."
-          </div>
+          {strategyQuote && (
+            <div style={{ fontSize: 12, color: "#555", marginTop: 12, maxWidth: 420, lineHeight: 1.6 }}>
+              "{strategyQuote}"
+            </div>
+          )}
         </div>
 
         {/* ── KEY STATS ── */}
         <div style={{ display: "flex", gap: 24 }}>
           {[
-            { label: "STRATEGY RETURN", value: stats ? `+${stats.total_return}%` : "+114.51%", color: "#00ff41" },
-            { label: "WIN RATE", value: stats ? `${stats.win_rate}%` : "72.2%", color: "#00aaff" },
-            { label: "QUANT ALPHA", value: compare ? `+${compare.quant_stats?.total_return}%` : "+848.23%", color: "#ff6600" },
-            { label: "SIGNAL", value: signal ? signal.signal : "BUY", color: signal?.signal === "BUY" ? "#00ff41" : "#ff3131" },
+            { label: "STRATEGY RETURN", value: stats ? `+${stats.total_return}%` : "—",   color: "#00ff41" },
+            { label: "WIN RATE",        value: stats ? `${stats.win_rate}%` : "—",         color: "#00aaff" },
+            { label: "QUANT ALPHA",     value: compare ? `+${compare.quant_stats?.total_return}%` : "—", color: "#ff6600" },
+            { label: "SIGNAL",          value: signal ? signal.signal : "—",               color: signal?.signal === "BUY" ? "#00ff41" : "#ff3131" },
           ].map(({ label, value, color }) => (
             <div key={label} style={{
               textAlign: "center", padding: "12px 20px",
@@ -257,7 +271,7 @@ export default function LandingPage({ onEnter, signal, stats, compare }) {
         </div>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <span style={{ fontSize: 9, color: "#333", letterSpacing: 1 }}>
-            ML ENSEMBLE v5.0 · 1,481 DAYS · 27 FEATURES
+            {footerLabel}
           </span>
           <button
             onClick={() => onEnter("dashboard")}
@@ -294,7 +308,6 @@ function FeatureCard({ card, onEnter }) {
         overflow: "hidden",
       }}
     >
-      {/* accent top bar */}
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, height: 2,
         background: hovered ? card.accent : "transparent",
@@ -315,7 +328,6 @@ function FeatureCard({ card, onEnter }) {
         {card.desc}
       </div>
 
-      {/* mini stats */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {card.stats.map(({ label, value }) => (
           <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
