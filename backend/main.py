@@ -6,16 +6,6 @@ main.py — DB-FIRST VERSION (fixed)
 - Single scheduler via start_scheduler()
 """
 
-from src.routes_live import router as live_router
-from src.scheduler import start_scheduler
-from src.database import init_db
-from src.db_data import (
-    ensure_ohlcv_table,
-    get_features_df,
-    get_trades_df,
-    get_portfolio_df,
-)
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
@@ -28,14 +18,32 @@ import json
 import os
 
 app = FastAPI()
-app.include_router(live_router, prefix="/api")
 
+# ── CORS — must be added BEFORE routers and routes ───────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://algo-trading-terminal.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from src.routes_live import router as live_router
+from src.scheduler import start_scheduler
+from src.database import init_db
+from src.db_data import (
+    ensure_ohlcv_table,
+    get_features_df,
+    get_trades_df,
+    get_portfolio_df,
+)
+
+app.include_router(live_router, prefix="/api")
+
 # ── Create ALL tables on startup ──────────────────────────────────────────────
 init_db()             # creates signals, trades, equity_curve (ORM models)
 ensure_ohlcv_table()  # creates ohlcv_features (raw SQL)
@@ -96,8 +104,12 @@ else:
 # ── Ensemble helpers ──────────────────────────────────────────────────────────
 def ensemble_proba(X):
     import xgboost as xgb
-    p1 = model.predict_proba(X)[:, 1]
-    p2 = lgbm_model.predict(X)
+    p1 = (model.predict_proba(X)[:, 1]
+          if hasattr(model, "predict_proba")
+          else model.predict(xgb.DMatrix(X)))
+    p2 = (lgbm_model.predict_proba(X)[:, 1]
+          if hasattr(lgbm_model, "predict_proba")
+          else lgbm_model.predict(X))
     p3 = cat_model.predict_proba(X)[:, 1]
     buy_prob = w_xgb * p1 + w_lgbm * p2 + w_cat * p3
     return np.column_stack([1 - buy_prob, buy_prob])
@@ -328,8 +340,8 @@ def get_indicators():
     data.index.name = "date"
     data   = data.reset_index()
     data["date"] = data["date"].astype(str)
-    data   = data.replace([float("inf"), float("-inf")], None)
-    data   = data.where(data.notna(), None)
+    data   = data.replace([np.inf, -np.inf], np.nan)
+    data   = data.astype(object).where(pd.notna(data), None)
     return data.to_dict(orient="records")
 
 
@@ -345,7 +357,7 @@ def get_psychology():
     for p in reversed(recent):
         if p < 0:
             cl += 1
-        else: 
+        else:
             break
     peak = port["value"].max() if not port.empty else 1_000_000
     cur  = port["value"].iloc[-1] if not port.empty else 1_000_000
@@ -359,9 +371,9 @@ def get_psychology():
         score -= 20
     elif dd > 2:
         score -= 10
-    if rw < 20: 
+    if rw < 20:
         score -= 30
-    elif rw < 40: 
+    elif rw < 40:
         score -= 15
     if cs < 50:
         score -= 10
@@ -369,24 +381,24 @@ def get_psychology():
     alerts = []
     if cl >= 3:
         alerts.append("Revenge trading risk — 3+ consecutive losses detected")
-    elif cl == 2: 
+    elif cl == 2:
         alerts.append("2 losses in a row — recency bias may affect next decision")
     if dd > 5:
         alerts.append(f"Portfolio down {dd}% from peak")
     elif dd > 2:
         alerts.append(f"Drawdown of {dd}% detected")
-    if rw < 40: 
+    if rw < 40:
         alerts.append("Win rate below 40% in last 5 trades")
     if cs < 50:
         alerts.append("Model confidence dropping")
-    if score >= 80:  
+    if score >= 80:
         s, m, c = "HEALTHY",      "Trading well. Continue normally.",          "#22c55e"
-    elif score >= 50: 
-        s, m, c = "CAUTION",       "Signs of stress. Reduce size.",             "#f59e0b"
-    elif score >= 20: 
-        s, m, c = "HIGH RISK",     "High emotional risk. Consider pausing.",    "#ef4444"
-    else:           
-        s, m, c = "STOP TRADING",  "Critical state. Stop trading now.",         "#dc2626"
+    elif score >= 50:
+        s, m, c = "CAUTION",      "Signs of stress. Reduce size.",             "#f59e0b"
+    elif score >= 20:
+        s, m, c = "HIGH RISK",    "High emotional risk. Consider pausing.",    "#ef4444"
+    else:
+        s, m, c = "STOP TRADING", "Critical state. Stop trading now.",         "#dc2626"
     return {"score": score, "status": s, "message": m, "color": c,
             "consecutive_losses": cl, "drawdown_pct": dd,
             "recent_winrate": rw, "conf_score": cs, "alerts": alerts}
