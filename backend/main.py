@@ -612,3 +612,23 @@ def db_status():
     finally:
         db.close()
     return {"last_ohlcv_date": last, "total_signals": n_signals, "total_trades": n_trades}
+
+@app.post("/admin/rebuild-features")
+def rebuild_features():
+    from src.db_data import upsert_ohlcv_bulk, get_features_df
+    from src.incremental_learn import engineer_features, make_label, generate_and_store_signal
+    import yfinance as yf
+    raw = yf.download("NSEI", start="2020-01-01", progress=False)
+    if isinstance(raw.columns, __import__("pandas").MultiIndex): raw.columns = raw.columns.droplevel(1)
+    raw.index.name = "date"
+    raw.columns = [c.lower() for c in raw.columns]
+    raw = raw.rename(columns={"open":"Open","high":"High","low":"Low","close":"Close","volume":"Volume"})
+    featured = engineer_features(raw)
+    featured = make_label(featured)
+    featured = featured.dropna()
+    store_df = featured.copy()
+    store_df.columns = [c.lower() for c in store_df.columns]
+    upsert_ohlcv_bulk(store_df)
+    df = get_features_df(days=5)
+    sig, conf = generate_and_store_signal(df)
+    return {"status": "rebuilt", "rows": len(featured), "signal": sig, "confidence": round(conf*100,2)}
