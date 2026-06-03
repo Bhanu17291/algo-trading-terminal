@@ -642,4 +642,4 @@ def rebuild_features():
     sig, conf = generate_and_store_signal(df)
 
     return {"status": "rebuilt", "rows": len(featured), "signal": sig,
-            "confidence": round(conf * 100, 2)}
+            "confidence": round(conf * 100, 2)}# fixed 
