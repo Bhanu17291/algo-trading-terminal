@@ -230,7 +230,7 @@ def calc_stats(tl, pl):
     wins2   = [t for t in sells if t.get("pnl", 0) > 0]
     pk, mdd = initial, 0.0
     for r in pl:
-        if r["value"] > pk: 
+        if r["value"] > pk:
             pk = r["value"]
         mdd = max(mdd, (pk - r["value"]) / pk * 100)
     return {
@@ -266,7 +266,9 @@ def get_latest_signal():
         s = db.query(Signal).filter(Signal.date == today).first()
         if s:
             latest_df = get_features_df(days=5)
-            close = round(float(latest_df["close"].iloc[-1]), 2) if not latest_df.empty and "close" in latest_df.columns else 0
+            close = 0
+            if not latest_df.empty and "close" in latest_df.columns:
+                close = round(float(latest_df["close"].iloc[-1]), 2)
             return {
                 "signal":     s.signal,
                 "confidence": round(s.confidence * 100, 2),
@@ -613,22 +615,31 @@ def db_status():
         db.close()
     return {"last_ohlcv_date": last, "total_signals": n_signals, "total_trades": n_trades}
 
+
 @app.post("/admin/rebuild-features")
 def rebuild_features():
     from src.db_data import upsert_ohlcv_bulk, get_features_df
     from src.incremental_learn import engineer_features, make_label, generate_and_store_signal
     import yfinance as yf
-    raw = yf.download("NSEI", start="2020-01-01", progress=False)
-    if isinstance(raw.columns, __import__("pandas").MultiIndex): raw.columns = raw.columns.droplevel(1)
+
+    raw = yf.download("^NSEI", start="2020-01-01", progress=False)
+    if isinstance(raw.columns, pd.MultiIndex):
+        raw.columns = raw.columns.droplevel(1)
     raw.index.name = "date"
     raw.columns = [c.lower() for c in raw.columns]
-    raw = raw.rename(columns={"open":"Open","high":"High","low":"Low","close":"Close","volume":"Volume"})
+    raw = raw.rename(columns={"open": "Open", "high": "High", "low": "Low",
+                               "close": "Close", "volume": "Volume"})
+
     featured = engineer_features(raw)
     featured = make_label(featured)
     featured = featured.dropna()
+
     store_df = featured.copy()
     store_df.columns = [c.lower() for c in store_df.columns]
     upsert_ohlcv_bulk(store_df)
+
     df = get_features_df(days=5)
     sig, conf = generate_and_store_signal(df)
-    return {"status": "rebuilt", "rows": len(featured), "signal": sig, "confidence": round(conf*100,2)}
+
+    return {"status": "rebuilt", "rows": len(featured), "signal": sig,
+            "confidence": round(conf * 100, 2)}
