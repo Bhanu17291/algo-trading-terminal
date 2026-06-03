@@ -297,7 +297,7 @@ def get_latest_signal():
         "confidence": round(float(confs[0]) * 100, 2),
         "buy_prob":   round(float(probs[0][1]) * 100, 2),
         "date":       str(latest_df.index[-1].date()),
-        "close":      round(float(latest_df["close"].iloc[-1]), 2),
+        "close":      round(float(latest_df["close"].iloc[-1]), 2) if "close" in latest_df.columns else 0,
         "source":     "live",
     }
 
