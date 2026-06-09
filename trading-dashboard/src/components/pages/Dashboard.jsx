@@ -17,18 +17,16 @@ const C = {
   warning: "#FBBF24",
 };
 
-function Tile({ label, value, sub, color = C.primary, onClick }) {
+function Tile({ label, value, color = C.primary }) {
   const [hov, setHov] = useState(false);
   return (
     <div
-      onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
         background: hov ? "rgba(34,197,94,0.06)" : C.card,
         border: `1px solid ${hov ? "rgba(34,197,94,0.35)" : C.border}`,
         borderRadius: 6, padding: "20px 22px",
-        cursor: onClick ? "pointer" : "default",
         transition: "background 0.2s, border-color 0.2s",
       }}
     >
@@ -38,7 +36,6 @@ function Tile({ label, value, sub, color = C.primary, onClick }) {
       <div style={{ fontSize: 26, fontWeight: 700, color, fontFamily: mono, letterSpacing: "-0.5px" }}>
         {value ?? "—"}
       </div>
-      {sub && <div style={{ fontSize: 11, color: C.textDim, marginTop: 6, fontFamily: mono }}>{sub}</div>}
     </div>
   );
 }
@@ -87,31 +84,28 @@ export default function Dashboard() {
   const [pnl,     setPnl]     = useState(null);
   const [market,  setMarket]  = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
 
   useEffect(() => {
     async function load() {
-      try {
-        const [sig, st, p, mk] = await Promise.all([
-          fetchJson("/signal"),
-          fetchJson("/stats"),
-          fetchJson("/pnl"),
-          fetchJson("/market-status"),
-        ]);
-        setSignal(sig);
-        setStats(st);
-        setPnl(p);
-        setMarket(mk);
-      } catch (e) {
-        setError("Backend is waking up — please wait 30s and refresh.");
-      } finally {
-        setLoading(false);
-      }
+      // Fetch all independently — one failure won't block the rest
+      const [sig, st, p, mk] = await Promise.allSettled([
+        fetchJson("/signal"),
+        fetchJson("/stats"),
+        fetchJson("/pnl"),
+        fetchJson("/market-status"),
+      ]);
+      if (sig.status === "fulfilled") setSignal(sig.value);
+      if (st.status  === "fulfilled") setStats(st.value);
+      if (p.status   === "fulfilled") setPnl(p.value);
+      if (mk.status  === "fulfilled") setMarket(mk.value);
+      setLoading(false);
     }
     load();
   }, []);
 
-  const signalColor = signal?.signal === "BUY" ? C.primary : signal?.signal === "SELL" ? C.danger : C.warning;
+  const signalColor = signal?.signal === "BUY"
+    ? C.primary : signal?.signal === "SELL"
+    ? C.danger : C.warning;
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Segoe UI', sans-serif" }}>
@@ -123,31 +117,30 @@ export default function Dashboard() {
         padding: "0 6%", background: "rgba(6,13,10,0.92)", backdropFilter: "blur(20px)",
         borderBottom: `1px solid ${C.border}`,
       }}>
-        <button
-          onClick={() => navigate("/")}
-          style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.accent, padding: "5px 14px", borderRadius: 4, fontSize: 11, letterSpacing: "0.8px", textTransform: "uppercase", cursor: "pointer", fontFamily: mono }}
-        >
+        <button onClick={() => navigate("/")} style={{
+          background: "transparent", border: `1px solid ${C.border}`,
+          color: C.accent, padding: "5px 14px", borderRadius: 4,
+          fontSize: 11, letterSpacing: "0.8px", textTransform: "uppercase",
+          cursor: "pointer", fontFamily: mono,
+        }}>
           ← Landing
         </button>
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: C.accent, fontFamily: mono }}>
           AlgoTerminal · NSEI
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: market?.is_open ? C.primary : C.danger, animation: market?.is_open ? "blink 2s infinite" : "none" }} />
+          <div style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: market?.is_open ? C.primary : C.danger,
+            animation: market?.is_open ? "blink 2s infinite" : "none",
+          }} />
           <span style={{ fontSize: 11, color: C.textDim, fontFamily: mono, letterSpacing: "1px" }}>
-            {market?.is_open ? "MARKET OPEN" : "MARKET CLOSED"} · {market?.current_time_ist ?? "--:--:--"} IST
+            {market ? (market.is_open ? "MARKET OPEN" : "MARKET CLOSED") : "CHECKING..."} · {market?.current_time_ist ?? "--:--:--"} IST
           </span>
         </div>
       </div>
 
-      <div style={{ paddingTop: 80, padding: "80px 6% 60px" }}>
-
-        {/* ERROR */}
-        {error && (
-          <div style={{ background: "rgba(248,113,113,0.08)", border: `1px solid rgba(248,113,113,0.3)`, borderRadius: 6, padding: "14px 18px", marginBottom: 24, fontSize: 13, color: C.danger, fontFamily: mono }}>
-            ⚠ {error}
-          </div>
-        )}
+      <div style={{ padding: "80px 6% 60px" }}>
 
         {/* LOADING */}
         {loading && (
@@ -157,7 +150,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {!loading && !error && (
+        {!loading && (
           <>
             {/* SIGNAL HERO */}
             <div style={{
@@ -169,35 +162,39 @@ export default function Dashboard() {
                 <div style={{ fontSize: 10, color: C.textDim, letterSpacing: "2px", textTransform: "uppercase", fontFamily: mono, marginBottom: 10 }}>
                   Today's ML Signal · {signal?.date ?? "—"}
                 </div>
-                <div style={{ fontSize: 48, fontWeight: 700, color: signalColor, fontFamily: mono, letterSpacing: "-1px", lineHeight: 1 }}>
-                  {signal?.signal ?? "—"}
+                <div style={{ fontSize: 48, fontWeight: 700, color: signal ? signalColor : C.textDim, fontFamily: mono, letterSpacing: "-1px", lineHeight: 1 }}>
+                  {signal?.signal ?? "UNAVAILABLE"}
                 </div>
                 <div style={{ fontSize: 13, color: C.textDim, fontFamily: mono, marginTop: 8 }}>
-                  Confidence: <span style={{ color: C.accent, fontWeight: 700 }}>{signal?.confidence ?? "—"}%</span>
-                  &nbsp;·&nbsp; NSEI Close: <span style={{ color: C.text }}>₹{signal?.close?.toLocaleString() ?? "—"}</span>
+                  {signal
+                    ? <>Confidence: <span style={{ color: C.accent, fontWeight: 700 }}>{signal.confidence}%</span> · NSEI Close: <span style={{ color: C.text }}>₹{signal.close?.toLocaleString()}</span></>
+                    : <span style={{ color: C.danger, fontSize: 11 }}>Signal unavailable — backend may be processing. Refresh in 30s.</span>
+                  }
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 3 }}>
-                {[...Array(10)].map((_, i) => (
-                  <div key={i} style={{
-                    width: 8, height: 40,
-                    background: i < Math.round((signal?.confidence ?? 0) / 10) ? signalColor : "rgba(255,255,255,0.05)",
-                    borderRadius: 2, transition: "background 0.3s",
-                  }} />
-                ))}
-              </div>
+              {signal && (
+                <div style={{ display: "flex", gap: 3 }}>
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} style={{
+                      width: 8, height: 40,
+                      background: i < Math.round((signal.confidence ?? 0) / 10) ? signalColor : "rgba(255,255,255,0.05)",
+                      borderRadius: 2,
+                    }} />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* STATS TILES */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
-              <Tile label="Total Return"  value={`+${stats?.total_return ?? "—"}%`} color={C.primary} />
-              <Tile label="Win Rate"      value={`${stats?.win_rate ?? "—"}%`}       color={C.accent} />
-              <Tile label="Total Trades"  value={stats?.total_trades ?? "—"}          color={C.text} />
-              <Tile label="Wins"          value={stats?.wins ?? "—"}                  color={C.primary} />
-              <Tile label="Losses"        value={stats?.losses ?? "—"}                color={C.danger} />
+              <Tile label="Total Return"   value={stats ? `+${stats.total_return}%` : "—"}    color={C.primary} />
+              <Tile label="Win Rate"       value={stats ? `${stats.win_rate}%` : "—"}           color={C.accent} />
+              <Tile label="Total Trades"   value={stats?.total_trades ?? "—"}                   color={C.text} />
+              <Tile label="Wins"           value={stats?.wins ?? "—"}                            color={C.primary} />
+              <Tile label="Losses"         value={stats?.losses ?? "—"}                          color={C.danger} />
               <Tile label="Cumulative PnL" value={pnl?.cumulative_pnl != null ? `₹${Number(pnl.cumulative_pnl).toLocaleString()}` : "—"} color={pnl?.cumulative_pnl >= 0 ? C.primary : C.danger} />
-              <Tile label="Best Trade"    value={pnl?.best_trade != null ? `₹${Number(pnl.best_trade).toLocaleString()}` : "—"}   color={C.primary} />
-              <Tile label="Worst Trade"   value={pnl?.worst_trade != null ? `₹${Number(pnl.worst_trade).toLocaleString()}` : "—"} color={C.danger} />
+              <Tile label="Best Trade"     value={pnl?.best_trade != null ? `₹${Number(pnl.best_trade).toLocaleString()}` : "—"}          color={C.primary} />
+              <Tile label="Worst Trade"    value={pnl?.worst_trade != null ? `₹${Number(pnl.worst_trade).toLocaleString()}` : "—"}         color={C.danger} />
             </div>
 
             {/* NAV GRID */}
