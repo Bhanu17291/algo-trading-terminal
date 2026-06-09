@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import Panel from "../shared/Panel"
 import BackButton from "../layout/BackButton"
+import { fetchJson } from "../../config/api"
 
-const API = "https://algo-trading-terminal.onrender.com"
 const mono = "'Courier New', monospace"
 
 export default function MarketPage({ onBack }) {
@@ -13,8 +13,8 @@ export default function MarketPage({ onBack }) {
     const fetch_market = async () => {
       try {
         const [s, l] = await Promise.all([
-          fetch(`${API}/market-status`).then(r => r.json()),
-          fetch(`${API}/live-log`).then(r => r.json()),
+          fetchJson("/market-status"),
+          fetchJson("/live-log"),
         ])
         setStatus(s)
         setLog(l)
