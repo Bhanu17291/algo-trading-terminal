@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 *,
 *::before,
 *::after {
@@ -8,25 +9,21 @@
 
 html {
     scroll-behavior: smooth;
+    font-size: 16px;
 }
 
 body {
-    background: #060D0A;
+    background: #07100C;
     color: #E7F0EA;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
 }
 
 button {
-    background: none;
-    border: none;
     cursor: pointer;
     font-family: inherit;
-}
-
-ul,
-ol {
-    list-style: none;
 }
 
 a {
@@ -34,19 +31,153 @@ a {
     color: inherit;
 }
 
+ul,
+ol {
+    list-style: none;
+}
+
+
+/* ── Scrollbar ── */
+
 ::-webkit-scrollbar {
-    width: 6px;
+    width: 5px;
+    height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #060D0A;
+    background: #07100C;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(34, 197, 94, 0.25);
+    background: #1A3025;
     border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(34, 197, 94, 0.45);
+    background: rgba(34, 197, 94, 0.3);
+}
+
+
+/* ── Recharts customization ── */
+
+.recharts-tooltip-wrapper {
+    outline: none;
+}
+
+.recharts-default-tooltip {
+    background: #0D1A13 !important;
+    border: 1px solid #1A3025 !important;
+    border-radius: 6px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+    stroke: #1A3025 !important;
+}
+
+
+/* ── DaisyUI theme overrides ── */
+
+[data-theme="dark"] {
+    --b1: #07100C;
+    --b2: #0D1A13;
+    --b3: #112018;
+    --bc: #E7F0EA;
+    --p: #22C55E;
+    --pc: #07100C;
+    --s: #86EFAC;
+    --sc: #07100C;
+    --a: #60A5FA;
+    --ac: #07100C;
+    --n: #1A3025;
+    --nc: #E7F0EA;
+    --in: #60A5FA;
+    --su: #22C55E;
+    --wa: #FBBF24;
+    --er: #F87171;
+    --rounded-box: 0.5rem;
+    --rounded-btn: 0.375rem;
+}
+
+
+/* ── Animations ── */
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+@keyframes blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+@keyframes marqueeL {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+@keyframes marqueeR {
+    from {
+        transform: translateX(-50%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes floatY {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+.chart-float {
+    animation: floatY 5s ease-in-out infinite;
 }

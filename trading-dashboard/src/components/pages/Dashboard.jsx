@@ -1,219 +1,225 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchJson } from "../../config/api";
+import { T, fmt, signalColor } from "../../config/tokens";
+import PageLayout from "../shared/PageLayout";
+import StatCard from "../shared/StatCard";
+import Panel from "../shared/Panel";
+import { SignalBadge } from "../shared/Badge";
 
-const mono = "'Courier New', monospace";
-
-const C = {
-  bg:      "#060D0A",
-  surface: "#0C1A14",
-  card:    "#101F17",
-  border:  "rgba(34,197,94,0.14)",
-  primary: "#22C55E",
-  accent:  "#86EFAC",
-  text:    "#E7F0EA",
-  textDim: "rgba(231,240,234,0.5)",
-  danger:  "#F87171",
-  warning: "#FBBF24",
-};
-
-function Tile({ label, value, color = C.primary }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: hov ? "rgba(34,197,94,0.06)" : C.card,
-        border: `1px solid ${hov ? "rgba(34,197,94,0.35)" : C.border}`,
-        borderRadius: 6, padding: "20px 22px",
-        transition: "background 0.2s, border-color 0.2s",
-      }}
-    >
-      <div style={{ fontSize: 10, color: C.textDim, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: mono, marginBottom: 10 }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 26, fontWeight: 700, color, fontFamily: mono, letterSpacing: "-0.5px" }}>
-        {value ?? "—"}
-      </div>
-    </div>
-  );
-}
-
-function NavCard({ icon, label, path, navigate }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onClick={() => navigate(path)}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: hov ? "rgba(34,197,94,0.07)" : C.card,
-        border: `1px solid ${hov ? "rgba(34,197,94,0.35)" : C.border}`,
-        borderRadius: 6, padding: "18px 16px",
-        cursor: "pointer", textAlign: "center",
-        transition: "background 0.2s, border-color 0.2s",
-      }}
-    >
-      <div style={{ fontSize: 22, color: C.primary, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: C.accent, fontFamily: mono, letterSpacing: "0.5px" }}>{label}</div>
-    </div>
-  );
-}
-
-const PAGES = [
-  { icon: "◎", label: "Trade Log",    path: "/trades"     },
-  { icon: "∿", label: "Indicators",   path: "/indicators" },
-  { icon: "◉", label: "ML Explainer", path: "/explainer"  },
-  { icon: "⟲", label: "Backtest",     path: "/backtest"   },
-  { icon: "▦", label: "Drawdown",     path: "/drawdown"   },
-  { icon: "⊕", label: "Risk Calc",    path: "/risk"       },
-  { icon: "∑", label: "Simulator",    path: "/simulator"  },
-  { icon: "⊞", label: "Heatmap",      path: "/heatmap"    },
-  { icon: "◈", label: "Screener",     path: "/screener"   },
-  { icon: "☰", label: "News",         path: "/news"       },
-  { icon: "♟", label: "Psychology",   path: "/psychology" },
-  { icon: "⚖", label: "Clients",      path: "/clients"    },
-  { icon: "↻", label: "Market",       path: "/market"     },
+const NAV_MODULES = [
+  { icon: "⇄", label: "Trade Log",    path: "/trades",     color: T.green,  desc: "Full trade history" },
+  { icon: "∿", label: "Indicators",   path: "/indicators", color: T.mint,   desc: "RSI · MACD · BB" },
+  { icon: "⬡", label: "ML Explain",   path: "/explainer",  color: T.purple, desc: "SHAP attribution" },
+  { icon: "⟳", label: "Backtest",     path: "/backtest",   color: T.amber,  desc: "Historical strategy" },
+  { icon: "↘", label: "Drawdown",     path: "/drawdown",   color: T.red,    desc: "Peak-to-trough" },
+  { icon: "⊕", label: "Risk Calc",    path: "/risk",       color: T.green,  desc: "Position sizing" },
+  { icon: "∑", label: "Simulator",    path: "/simulator",  color: T.blue,   desc: "Strategy scaling" },
+  { icon: "▦", label: "Heatmap",      path: "/heatmap",    color: T.mint,   desc: "Monthly returns" },
+  { icon: "◐", label: "Screener",     path: "/screener",   color: T.green,  desc: "Signal filter" },
+  { icon: "☰", label: "News",         path: "/news",       color: T.textDim,"desc": "Market news" },
+  { icon: "◎", label: "Psychology",   path: "/psychology", color: T.purple, desc: "Bias detection" },
+  { icon: "⚖", label: "Clients",      path: "/clients",    color: T.blue,   desc: "QUANT vs MACRO" },
+  { icon: "◉", label: "Market",       path: "/market",     color: T.green,  desc: "IST clock · status" },
 ];
+
+function ModuleCard({ item, navigate }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onClick={() => navigate(item.path)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? T.surfaceHov : T.surface,
+        border: `1px solid ${hov ? item.color + "55" : T.border}`,
+        borderRadius: T.rLg,
+        padding: "16px 14px",
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        boxShadow: hov ? `0 4px 20px ${item.color}18` : "none",
+        display: "flex", flexDirection: "column", gap: 8,
+      }}
+    >
+      <div style={{ fontSize: 20, color: item.color }}>{item.icon}</div>
+      <div>
+        <div style={{
+          fontSize: 12, fontWeight: 700, color: T.text,
+          fontFamily: T.fontMono, letterSpacing: "0.5px", textTransform: "uppercase",
+        }}>
+          {item.label}
+        </div>
+        <div style={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono, marginTop: 2 }}>
+          {item.desc}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfidenceBar({ confidence, color }) {
+  return (
+    <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+      {[...Array(10)].map((_, i) => (
+        <div key={i} style={{
+          width: 6, height: 32,
+          background: i < Math.round((confidence ?? 0) / 10) ? color : "rgba(255,255,255,0.06)",
+          borderRadius: 2,
+          transition: "background 0.3s ease",
+        }} />
+      ))}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [signal,  setSignal]  = useState(null);
   const [stats,   setStats]   = useState(null);
   const [pnl,     setPnl]     = useState(null);
-  const [market,  setMarket]  = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      // Fetch all independently — one failure won't block the rest
-      const [sig, st, p, mk] = await Promise.allSettled([
+      const [sig, st, p] = await Promise.allSettled([
         fetchJson("/signal"),
         fetchJson("/stats"),
         fetchJson("/pnl"),
-        fetchJson("/market-status"),
       ]);
       if (sig.status === "fulfilled") setSignal(sig.value);
       if (st.status  === "fulfilled") setStats(st.value);
       if (p.status   === "fulfilled") setPnl(p.value);
-      if (mk.status  === "fulfilled") setMarket(mk.value);
       setLoading(false);
     }
     load();
   }, []);
 
-  const signalColor = signal?.signal === "BUY"
-    ? C.primary : signal?.signal === "SELL"
-    ? C.danger : C.warning;
+  const sigColor = signal ? signalColor(signal.signal) : T.textDim;
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Segoe UI', sans-serif" }}>
-
-      {/* TOP BAR */}
-      <div style={{
-        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        height: 56, display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 6%", background: "rgba(6,13,10,0.92)", backdropFilter: "blur(20px)",
-        borderBottom: `1px solid ${C.border}`,
-      }}>
-        <button onClick={() => navigate("/")} style={{
-          background: "transparent", border: `1px solid ${C.border}`,
-          color: C.accent, padding: "5px 14px", borderRadius: 4,
-          fontSize: 11, letterSpacing: "0.8px", textTransform: "uppercase",
-          cursor: "pointer", fontFamily: mono,
-        }}>
-          ← Landing
-        </button>
-        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: C.accent, fontFamily: mono }}>
-          AlgoTerminal · NSEI
+    <PageLayout>
+      {loading ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "60px 0", color: T.textDim, fontFamily: T.fontMono, fontSize: 12 }}>
+          <div style={{ width: 14, height: 14, border: `2px solid ${T.green}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          Connecting to signal engine...
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{
-            width: 7, height: 7, borderRadius: "50%",
-            background: market?.is_open ? C.primary : C.danger,
-            animation: market?.is_open ? "blink 2s infinite" : "none",
-          }} />
-          <span style={{ fontSize: 11, color: C.textDim, fontFamily: mono, letterSpacing: "1px" }}>
-            {market ? (market.is_open ? "MARKET OPEN" : "MARKET CLOSED") : "CHECKING..."} · {market?.current_time_ist ?? "--:--:--"} IST
-          </span>
-        </div>
-      </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, animation: "fadeUp 0.4s ease" }}>
 
-      <div style={{ padding: "80px 6% 60px" }}>
-
-        {/* LOADING */}
-        {loading && (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "40px 0", color: C.textDim, fontFamily: mono, fontSize: 13 }}>
-            <div style={{ width: 16, height: 16, border: `2px solid ${C.primary}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-            Connecting to signal engine...
+          {/* ── PAGE HEADER ── */}
+          <div>
+            <div style={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>
+              Overview
+            </div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>
+              Dashboard
+            </h1>
           </div>
-        )}
 
-        {!loading && (
-          <>
-            {/* SIGNAL HERO */}
-            <div style={{
-              background: C.surface, border: `1px solid ${C.border}`,
-              borderRadius: 8, padding: "28px 32px", marginBottom: 24,
-              display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20,
-            }}>
-              <div>
-                <div style={{ fontSize: 10, color: C.textDim, letterSpacing: "2px", textTransform: "uppercase", fontFamily: mono, marginBottom: 10 }}>
-                  Today's ML Signal · {signal?.date ?? "—"}
+          {/* ── SIGNAL HERO ── */}
+          <div style={{
+            background: `linear-gradient(135deg, ${T.surface} 0%, rgba(34,197,94,0.04) 100%)`,
+            border: `1px solid ${T.border}`,
+            borderLeft: `4px solid ${sigColor}`,
+            borderRadius: T.rLg,
+            padding: "24px 28px",
+            display: "flex", alignItems: "center",
+            justifyContent: "space-between", flexWrap: "wrap", gap: 20,
+            boxShadow: signal ? `0 0 40px ${sigColor}10` : "none",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono, letterSpacing: "2px", textTransform: "uppercase" }}>
+                Today's ML Signal · {signal?.date ?? "—"}
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{
+                  fontSize: 52, fontWeight: 900, color: sigColor,
+                  fontFamily: T.fontMono, letterSpacing: "-2px", lineHeight: 1,
+                }}>
+                  {signal?.signal ?? "—"}
                 </div>
-                <div style={{ fontSize: 48, fontWeight: 700, color: signal ? signalColor : C.textDim, fontFamily: mono, letterSpacing: "-1px", lineHeight: 1 }}>
-                  {signal?.signal ?? "UNAVAILABLE"}
+                {signal && <SignalBadge signal={signal.signal} size="lg" />}
+              </div>
+
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
+                  <span style={{ color: T.textFaint }}>Confidence </span>
+                  <span style={{ color: T.mint, fontWeight: 700 }}>{signal?.confidence ?? "—"}%</span>
                 </div>
-                <div style={{ fontSize: 13, color: C.textDim, fontFamily: mono, marginTop: 8 }}>
-                  {signal
-                    ? <>Confidence: <span style={{ color: C.accent, fontWeight: 700 }}>{signal.confidence}%</span> · NSEI Close: <span style={{ color: C.text }}>₹{signal.close?.toLocaleString()}</span></>
-                    : <span style={{ color: C.danger, fontSize: 11 }}>Signal unavailable — backend may be processing. Refresh in 30s.</span>
-                  }
+                <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
+                  <span style={{ color: T.textFaint }}>NSEI Close </span>
+                  <span style={{ color: T.text, fontWeight: 700 }}>₹{signal?.close?.toLocaleString("en-IN") ?? "—"}</span>
+                </div>
+                <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
+                  <span style={{ color: T.textFaint }}>Source </span>
+                  <span style={{ color: T.textDim }}>{signal?.source ?? "—"}</span>
                 </div>
               </div>
-              {signal && (
-                <div style={{ display: "flex", gap: 3 }}>
-                  {[...Array(10)].map((_, i) => (
-                    <div key={i} style={{
-                      width: 8, height: 40,
-                      background: i < Math.round((signal.confidence ?? 0) / 10) ? signalColor : "rgba(255,255,255,0.05)",
-                      borderRadius: 2,
-                    }} />
-                  ))}
+
+              {!signal && (
+                <div style={{ fontSize: 11, color: T.amber, fontFamily: T.fontMono }}>
+                  Signal unavailable — backend may be processing. Refresh in 30s.
                 </div>
               )}
             </div>
 
-            {/* STATS TILES */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
-              <Tile label="Total Return"   value={stats ? `+${stats.total_return}%` : "—"}    color={C.primary} />
-              <Tile label="Win Rate"       value={stats ? `${stats.win_rate}%` : "—"}           color={C.accent} />
-              <Tile label="Total Trades"   value={stats?.total_trades ?? "—"}                   color={C.text} />
-              <Tile label="Wins"           value={stats?.wins ?? "—"}                            color={C.primary} />
-              <Tile label="Losses"         value={stats?.losses ?? "—"}                          color={C.danger} />
-              <Tile label="Cumulative PnL" value={pnl?.cumulative_pnl != null ? `₹${Number(pnl.cumulative_pnl).toLocaleString()}` : "—"} color={pnl?.cumulative_pnl >= 0 ? C.primary : C.danger} />
-              <Tile label="Best Trade"     value={pnl?.best_trade != null ? `₹${Number(pnl.best_trade).toLocaleString()}` : "—"}          color={C.primary} />
-              <Tile label="Worst Trade"    value={pnl?.worst_trade != null ? `₹${Number(pnl.worst_trade).toLocaleString()}` : "—"}         color={C.danger} />
-            </div>
+            {signal && (
+              <ConfidenceBar confidence={signal.confidence} color={sigColor} />
+            )}
+          </div>
 
-            {/* NAV GRID */}
-            <div style={{ fontSize: 10, color: C.textDim, letterSpacing: "2px", textTransform: "uppercase", fontFamily: mono, marginBottom: 14 }}>
-              Platform Modules
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
-              {PAGES.map(p => (
-                <NavCard key={p.path} icon={p.icon} label={p.label} path={p.path} navigate={navigate} />
+          {/* ── STATS GRID ── */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+            <StatCard
+              label="Total Return"
+              value={stats ? fmt.pct(stats.total_return) : "—"}
+              color={T.green} icon="↑"
+              sub={stats ? `Final ₹${Number(stats.final_value).toLocaleString("en-IN")}` : undefined}
+            />
+            <StatCard
+              label="Win Rate"
+              value={stats ? fmt.conf(stats.win_rate) : "—"}
+              color={T.mint} icon="◎"
+              sub={stats ? `${stats.wins}W · ${stats.losses}L` : undefined}
+            />
+            <StatCard
+              label="Total Trades"
+              value={stats?.total_trades ?? "—"}
+              color={T.text} icon="⇄"
+            />
+            <StatCard
+              label="Cumulative PnL"
+              value={pnl ? fmt.inr(pnl.cumulative_pnl) : "—"}
+              color={pnl?.cumulative_pnl >= 0 ? T.green : T.red} icon="₹"
+            />
+            <StatCard
+              label="Best Trade"
+              value={pnl ? fmt.inr(pnl.best_trade) : "—"}
+              color={T.green} icon="▲"
+            />
+            <StatCard
+              label="Worst Trade"
+              value={pnl ? fmt.inr(pnl.worst_trade) : "—"}
+              color={T.red} icon="▼"
+            />
+          </div>
+
+          {/* ── MODULES ── */}
+          <Panel title="Platform Modules" accent={T.green}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+              gap: 10,
+            }}>
+              {NAV_MODULES.map(item => (
+                <ModuleCard key={item.path} item={item} navigate={navigate} />
               ))}
             </div>
-          </>
-        )}
-      </div>
+          </Panel>
 
-      <style>{`
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-        @keyframes spin   { to{transform:rotate(360deg)} }
-      `}</style>
-    </div>
+        </div>
+      )}
+    </PageLayout>
   );
 }
