@@ -1,239 +1,222 @@
-import { useState } from "react"
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  ReferenceLine, Legend, BarChart, Bar, Cell
-} from "recharts"
-import Panel from "../shared/Panel"
-import Metric from "../shared/Metric"
-import ChartTooltip from "../shared/ChartTooltip"
-import BackButton from "../layout/BackButton"
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchJson } from "../../config/api";
 
-const mono = "'Courier New', monospace"
+const mono = "'Courier New', monospace";
 
-function ProfileBadge({ label, value }) {
+const C = {
+  bg:      "#060D0A",
+  surface: "#0C1A14",
+  card:    "#101F17",
+  border:  "rgba(34,197,94,0.14)",
+  primary: "#22C55E",
+  accent:  "#86EFAC",
+  text:    "#E7F0EA",
+  textDim: "rgba(231,240,234,0.5)",
+  danger:  "#F87171",
+  warning: "#FBBF24",
+};
+
+function Tile({ label, value, sub, color = C.primary, onClick }) {
+  const [hov, setHov] = useState(false);
   return (
-    <div className="flex justify-between items-center border-b border-base-300 py-2">
-      <span style={{ fontSize: 11, color: "#666", fontFamily: mono }}>{label}</span>
-      <span style={{ fontSize: 11, color: "#ccc", fontFamily: mono, fontWeight: 700 }}>{value}</span>
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? "rgba(34,197,94,0.06)" : C.card,
+        border: `1px solid ${hov ? "rgba(34,197,94,0.35)" : C.border}`,
+        borderRadius: 6, padding: "20px 22px",
+        cursor: onClick ? "pointer" : "default",
+        transition: "background 0.2s, border-color 0.2s",
+      }}
+    >
+      <div style={{ fontSize: 10, color: C.textDim, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: mono, marginBottom: 10 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 700, color, fontFamily: mono, letterSpacing: "-0.5px" }}>
+        {value ?? "—"}
+      </div>
+      {sub && <div style={{ fontSize: 11, color: C.textDim, marginTop: 6, fontFamily: mono }}>{sub}</div>}
     </div>
-  )
+  );
 }
 
-export default function ClientsPage({ compare, onBack }) {
-  const [activeTab, setActiveTab] = useState("QUANT")
-
-  if (!compare) return (
-    <div className="flex items-center justify-center h-64 gap-3">
-      <span className="loading loading-bars loading-lg" style={{ color: "#ff6600" }}></span>
-      <span style={{ fontFamily: mono, color: "#666" }}>Loading client data...</span>
+function NavCard({ icon, label, path, navigate }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onClick={() => navigate(path)}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov ? "rgba(34,197,94,0.07)" : C.card,
+        border: `1px solid ${hov ? "rgba(34,197,94,0.35)" : C.border}`,
+        borderRadius: 6, padding: "18px 16px",
+        cursor: "pointer", textAlign: "center",
+        transition: "background 0.2s, border-color 0.2s",
+      }}
+    >
+      <div style={{ fontSize: 22, color: C.primary, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: C.accent, fontFamily: mono, letterSpacing: "0.5px" }}>{label}</div>
     </div>
-  )
+  );
+}
 
-  const { quant_stats, macro_stats, chart_data, alpha } = compare
+const PAGES = [
+  { icon: "◎", label: "Trade Log",    path: "/trades"     },
+  { icon: "∿", label: "Indicators",   path: "/indicators" },
+  { icon: "◉", label: "ML Explainer", path: "/explainer"  },
+  { icon: "⟲", label: "Backtest",     path: "/backtest"   },
+  { icon: "▦", label: "Drawdown",     path: "/drawdown"   },
+  { icon: "⊕", label: "Risk Calc",    path: "/risk"       },
+  { icon: "∑", label: "Simulator",    path: "/simulator"  },
+  { icon: "⊞", label: "Heatmap",      path: "/heatmap"    },
+  { icon: "◈", label: "Screener",     path: "/screener"   },
+  { icon: "☰", label: "News",         path: "/news"       },
+  { icon: "♟", label: "Psychology",   path: "/psychology" },
+  { icon: "⚖", label: "Clients",      path: "/clients"    },
+  { icon: "↻", label: "Market",       path: "/market"     },
+];
 
-  const nsei_return = chart_data.filter(d => d.NSEI).slice(-1)[0]?.NSEI
-  const nsei_pct    = nsei_return ? ((nsei_return - 100000) / 100000 * 100).toFixed(2) : "—"
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [signal,  setSignal]  = useState(null);
+  const [stats,   setStats]   = useState(null);
+  const [pnl,     setPnl]     = useState(null);
+  const [market,  setMarket]  = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
 
-  const ddData = (() => {
-    let qPeak = 100000, mPeak = 100000
-    return chart_data.map(d => {
-      if (d.QUANT && d.QUANT > qPeak) qPeak = d.QUANT
-      if (d.MACRO && d.MACRO > mPeak) mPeak = d.MACRO
-      return {
-        date:  d.date?.slice(2, 7),
-        QUANT: d.QUANT ? parseFloat(((d.QUANT - qPeak) / qPeak * 100).toFixed(2)) : null,
-        MACRO: d.MACRO ? parseFloat(((d.MACRO - mPeak) / mPeak * 100).toFixed(2)) : null,
+  useEffect(() => {
+    async function load() {
+      try {
+        const [sig, st, p, mk] = await Promise.all([
+          fetchJson("/signal"),
+          fetchJson("/stats"),
+          fetchJson("/pnl"),
+          fetchJson("/market-status"),
+        ]);
+        setSignal(sig);
+        setStats(st);
+        setPnl(p);
+        setMarket(mk);
+      } catch (e) {
+        setError("Backend is waking up — please wait 30s and refresh.");
+      } finally {
+        setLoading(false);
       }
-    })
-  })()
+    }
+    load();
+  }, []);
 
-  const barData = [
-    { metric: "Return %",   QUANT: quant_stats.total_return,  MACRO: macro_stats.total_return  },
-    { metric: "Win Rate %", QUANT: quant_stats.win_rate,      MACRO: macro_stats.win_rate      },
-    { metric: "Max DD %",   QUANT: -quant_stats.max_drawdown, MACRO: -macro_stats.max_drawdown },
-  ]
-
-  const tradeData = activeTab === "QUANT"
-    ? compare.quant_trades
-    : compare.macro_trades
+  const signalColor = signal?.signal === "BUY" ? C.primary : signal?.signal === "SELL" ? C.danger : C.warning;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "'Segoe UI', sans-serif" }}>
 
-      <BackButton onBack={onBack} />
-
-      {/* ── CLIENT HEADER CARDS ── */}
-      <div className="grid grid-cols-3 gap-3">
-
-        {/* QUANT card */}
-        <div className="card bg-base-200 border border-base-300 p-4"
-          style={{ borderTop: "3px solid #ff6600" }}>
-          <div className="flex justify-between items-center mb-3">
-            <span style={{ fontSize: 20, fontWeight: 900, color: "#ff6600", fontFamily: mono }}>QUANT</span>
-            <div className="badge badge-warning" style={{ fontFamily: mono }}>AGGRESSIVE</div>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Metric label="FINAL VALUE"   value={`₹${quant_stats.final_value?.toLocaleString()}`}  color="#ff6600" size={18} />
-            <Metric label="TOTAL RETURN"  value={`+${quant_stats.total_return}%`}                   color="#00ff41" size={18} />
-            <Metric label="WIN RATE"      value={`${quant_stats.win_rate}%`}                         color="#ffd700" size={18} />
-            <Metric label="TOTAL TRADES"  value={quant_stats.total_trades}                           color="#ccc"    size={18} />
-            <Metric label="MAX DRAWDOWN"  value={`-${quant_stats.max_drawdown}%`}                   color="#ff3131" size={18} />
-            <Metric label="TOTAL PnL"     value={`₹${quant_stats.total_pnl?.toLocaleString()}`}    color="#00ff41" size={18} />
-          </div>
-          <div className="border-t border-base-300 pt-3">
-            <ProfileBadge label="Confidence Threshold" value="≥ 45%" />
-            <ProfileBadge label="Position Size"        value="95% of capital" />
-            <ProfileBadge label="Stop Loss"            value="3%" />
-            <ProfileBadge label="Max Hold"             value="30 days" />
-          </div>
+      {/* TOP BAR */}
+      <div style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        height: 56, display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 6%", background: "rgba(6,13,10,0.92)", backdropFilter: "blur(20px)",
+        borderBottom: `1px solid ${C.border}`,
+      }}>
+        <button
+          onClick={() => navigate("/")}
+          style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.accent, padding: "5px 14px", borderRadius: 4, fontSize: 11, letterSpacing: "0.8px", textTransform: "uppercase", cursor: "pointer", fontFamily: mono }}
+        >
+          ← Landing
+        </button>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", color: C.accent, fontFamily: mono }}>
+          AlgoTerminal · NSEI
         </div>
-
-        {/* VS divider */}
-        <div className="flex flex-col items-center justify-center gap-4">
-          <div style={{ fontSize: 36, fontWeight: 900, color: "#444", fontFamily: mono }}>VS</div>
-          <div className="flex flex-col gap-2 w-full">
-            <div className="card bg-base-300 p-3 text-center" style={{ borderTop: "2px solid #ff6600" }}>
-              <div style={{ fontSize: 10, color: "#666", fontFamily: mono, marginBottom: 4 }}>QUANT α vs NSEI</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: alpha.quant_vs_nsei >= 0 ? "#00ff41" : "#ff3131", fontFamily: mono }}>
-                {alpha.quant_vs_nsei >= 0 ? "+" : ""}{alpha.quant_vs_nsei}%
-              </div>
-            </div>
-            <div className="card bg-base-300 p-3 text-center" style={{ borderTop: "2px solid #00aaff" }}>
-              <div style={{ fontSize: 10, color: "#666", fontFamily: mono, marginBottom: 4 }}>MACRO α vs NSEI</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: alpha.macro_vs_nsei >= 0 ? "#00ff41" : "#ff3131", fontFamily: mono }}>
-                {alpha.macro_vs_nsei >= 0 ? "+" : ""}{alpha.macro_vs_nsei}%
-              </div>
-            </div>
-            <div className="card bg-base-300 p-3 text-center" style={{ borderTop: "2px solid #cc44ff" }}>
-              <div style={{ fontSize: 10, color: "#666", fontFamily: mono, marginBottom: 4 }}>NSEI BENCHMARK</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "#cc44ff", fontFamily: mono }}>+{nsei_pct}%</div>
-            </div>
-          </div>
-        </div>
-
-        {/* MACRO card */}
-        <div className="card bg-base-200 border border-base-300 p-4"
-          style={{ borderTop: "3px solid #00aaff" }}>
-          <div className="flex justify-between items-center mb-3">
-            <span style={{ fontSize: 20, fontWeight: 900, color: "#00aaff", fontFamily: mono }}>MACRO</span>
-            <div className="badge badge-info" style={{ fontFamily: mono }}>CONSERVATIVE</div>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Metric label="FINAL VALUE"   value={`₹${macro_stats.final_value?.toLocaleString()}`}  color="#00aaff" size={18} />
-            <Metric label="TOTAL RETURN"  value={`+${macro_stats.total_return}%`}                   color="#00ff41" size={18} />
-            <Metric label="WIN RATE"      value={`${macro_stats.win_rate}%`}                         color="#ffd700" size={18} />
-            <Metric label="TOTAL TRADES"  value={macro_stats.total_trades}                           color="#ccc"    size={18} />
-            <Metric label="MAX DRAWDOWN"  value={`-${macro_stats.max_drawdown}%`}                   color="#ff3131" size={18} />
-            <Metric label="TOTAL PnL"     value={`₹${macro_stats.total_pnl?.toLocaleString()}`}    color="#00aaff" size={18} />
-          </div>
-          <div className="border-t border-base-300 pt-3">
-            <ProfileBadge label="Confidence Threshold" value="≥ 70%" />
-            <ProfileBadge label="Position Size"        value="60% of capital" />
-            <ProfileBadge label="Stop Loss"            value="1.5%" />
-            <ProfileBadge label="Max Hold"             value="15 days" />
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: market?.is_open ? C.primary : C.danger, animation: market?.is_open ? "blink 2s infinite" : "none" }} />
+          <span style={{ fontSize: 11, color: C.textDim, fontFamily: mono, letterSpacing: "1px" }}>
+            {market?.is_open ? "MARKET OPEN" : "MARKET CLOSED"} · {market?.current_time_ist ?? "--:--:--"} IST
+          </span>
         </div>
       </div>
 
-      {/* ── EQUITY CURVE COMPARISON ── */}
-      <Panel title="PORTFOLIO EQUITY CURVE — QUANT vs MACRO vs NSEI BENCHMARK">
-        <div style={{ fontSize: 11, color: "#666", fontFamily: mono, marginBottom: 10 }}>
-          All three start at ₹1,00,000 · NSEI = buy-and-hold benchmark
-        </div>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={chart_data.filter((_, i) => i % 3 === 0)}>
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }}
-              tickFormatter={d => d?.slice(2, 7)} />
-            <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }}
-              tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
-            <Tooltip content={<ChartTooltip />} />
-            <ReferenceLine y={100000} stroke="#333" strokeDasharray="4 4" />
-            <Legend wrapperStyle={{ fontFamily: mono, fontSize: 12 }} />
-            <Line type="monotone" dataKey="QUANT" stroke="#ff6600" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="MACRO" stroke="#00aaff" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="NSEI"  stroke="#cc44ff" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />
-          </LineChart>
-        </ResponsiveContainer>
-      </Panel>
+      <div style={{ paddingTop: 80, padding: "80px 6% 60px" }}>
 
-      {/* ── DRAWDOWN + BAR COMPARISON ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <Panel title="DRAWDOWN COMPARISON — % FROM PEAK" accent="#ff3131">
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={ddData.filter((_, i) => i % 3 === 0)}>
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} />
-              <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `${v}%`} />
-              <Tooltip content={<ChartTooltip />} />
-              <ReferenceLine y={0} stroke="#333" />
-              <Legend wrapperStyle={{ fontFamily: mono, fontSize: 11 }} />
-              <Line type="monotone" dataKey="QUANT" stroke="#ff6600" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="MACRO" stroke="#00aaff" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </Panel>
+        {/* ERROR */}
+        {error && (
+          <div style={{ background: "rgba(248,113,113,0.08)", border: `1px solid rgba(248,113,113,0.3)`, borderRadius: 6, padding: "14px 18px", marginBottom: 24, fontSize: 13, color: C.danger, fontFamily: mono }}>
+            ⚠ {error}
+          </div>
+        )}
 
-        <Panel title="HEAD-TO-HEAD METRICS COMPARISON">
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={barData} layout="vertical">
-              <XAxis type="number" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} />
-              <YAxis dataKey="metric" type="category" tick={{ fontSize: 11, fill: "#ccc", fontFamily: mono }} width={80} />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend wrapperStyle={{ fontFamily: mono, fontSize: 11 }} />
-              <Bar dataKey="QUANT" fill="#ff6600" fillOpacity={0.85} radius={[0, 4, 4, 0]} />
-              <Bar dataKey="MACRO" fill="#00aaff" fillOpacity={0.85} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Panel>
-      </div>
+        {/* LOADING */}
+        {loading && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "40px 0", color: C.textDim, fontFamily: mono, fontSize: 13 }}>
+            <div style={{ width: 16, height: 16, border: `2px solid ${C.primary}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            Connecting to signal engine...
+          </div>
+        )}
 
-      {/* ── TRADE LOG ── */}
-      <Panel title="TRADE-BY-TRADE LOG">
-        <div className="tabs tabs-boxed mb-4" style={{ fontFamily: mono }}>
-          {["QUANT", "MACRO"].map(tab => (
-            <a key={tab}
-              className={`tab ${activeTab === tab ? "tab-active" : ""}`}
-              style={{ color: tab === "QUANT" ? "#ff6600" : "#00aaff", fontFamily: mono, fontWeight: 700 }}
-              onClick={() => setActiveTab(tab)}>
-              {tab}
-            </a>
-          ))}
-        </div>
-        <div className="overflow-x-auto">
-          <table className="table table-sm" style={{ fontFamily: mono }}>
-            <thead>
-              <tr style={{ color: activeTab === "QUANT" ? "#ff6600" : "#00aaff", fontSize: 11, letterSpacing: 1 }}>
-                <th>#</th><th>DATE</th><th>ACTION</th><th>PRICE</th><th>QTY</th><th>PnL</th><th>CONFIDENCE</th><th>EXIT</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(tradeData || []).map((t, i) => (
-                <tr key={i} className="hover">
-                  <td style={{ color: "#555" }}>{i + 1}</td>
-                  <td style={{ color: "#666" }}>{t.date}</td>
-                  <td>
-                    <div className={`badge badge-sm ${t.action === "BUY" ? "badge-success" : "badge-error"}`}>
-                      {t.action}
-                    </div>
-                  </td>
-                  <td style={{ color: "#ccc" }}>₹{Number(t.price)?.toLocaleString()}</td>
-                  <td style={{ color: "#ccc" }}>{t.qty}</td>
-                  <td style={{ color: t.pnl > 0 ? "#00ff41" : t.pnl < 0 ? "#ff3131" : "#666", fontWeight: 700 }}>
-                    {t.pnl !== 0 ? `${t.pnl > 0 ? "+" : ""}₹${Number(t.pnl)?.toLocaleString()}` : "—"}
-                  </td>
-                  <td style={{ color: "#666" }}>{(t.confidence * 100).toFixed(1)}%</td>
-                  <td>
-                    {t.exit_type
-                      ? <div className={`badge badge-xs badge-outline ${t.exit_type === "stop_loss" ? "badge-error" : t.exit_type === "max_hold" ? "badge-warning" : "badge-info"}`}>
-                          {t.exit_type}
-                        </div>
-                      : <span style={{ color: "#333" }}>—</span>}
-                  </td>
-                </tr>
+        {!loading && !error && (
+          <>
+            {/* SIGNAL HERO */}
+            <div style={{
+              background: C.surface, border: `1px solid ${C.border}`,
+              borderRadius: 8, padding: "28px 32px", marginBottom: 24,
+              display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20,
+            }}>
+              <div>
+                <div style={{ fontSize: 10, color: C.textDim, letterSpacing: "2px", textTransform: "uppercase", fontFamily: mono, marginBottom: 10 }}>
+                  Today's ML Signal · {signal?.date ?? "—"}
+                </div>
+                <div style={{ fontSize: 48, fontWeight: 700, color: signalColor, fontFamily: mono, letterSpacing: "-1px", lineHeight: 1 }}>
+                  {signal?.signal ?? "—"}
+                </div>
+                <div style={{ fontSize: 13, color: C.textDim, fontFamily: mono, marginTop: 8 }}>
+                  Confidence: <span style={{ color: C.accent, fontWeight: 700 }}>{signal?.confidence ?? "—"}%</span>
+                  &nbsp;·&nbsp; NSEI Close: <span style={{ color: C.text }}>₹{signal?.close?.toLocaleString() ?? "—"}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 3 }}>
+                {[...Array(10)].map((_, i) => (
+                  <div key={i} style={{
+                    width: 8, height: 40,
+                    background: i < Math.round((signal?.confidence ?? 0) / 10) ? signalColor : "rgba(255,255,255,0.05)",
+                    borderRadius: 2, transition: "background 0.3s",
+                  }} />
+                ))}
+              </div>
+            </div>
+
+            {/* STATS TILES */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
+              <Tile label="Total Return"  value={`+${stats?.total_return ?? "—"}%`} color={C.primary} />
+              <Tile label="Win Rate"      value={`${stats?.win_rate ?? "—"}%`}       color={C.accent} />
+              <Tile label="Total Trades"  value={stats?.total_trades ?? "—"}          color={C.text} />
+              <Tile label="Wins"          value={stats?.wins ?? "—"}                  color={C.primary} />
+              <Tile label="Losses"        value={stats?.losses ?? "—"}                color={C.danger} />
+              <Tile label="Cumulative PnL" value={pnl?.cumulative_pnl != null ? `₹${Number(pnl.cumulative_pnl).toLocaleString()}` : "—"} color={pnl?.cumulative_pnl >= 0 ? C.primary : C.danger} />
+              <Tile label="Best Trade"    value={pnl?.best_trade != null ? `₹${Number(pnl.best_trade).toLocaleString()}` : "—"}   color={C.primary} />
+              <Tile label="Worst Trade"   value={pnl?.worst_trade != null ? `₹${Number(pnl.worst_trade).toLocaleString()}` : "—"} color={C.danger} />
+            </div>
+
+            {/* NAV GRID */}
+            <div style={{ fontSize: 10, color: C.textDim, letterSpacing: "2px", textTransform: "uppercase", fontFamily: mono, marginBottom: 14 }}>
+              Platform Modules
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+              {PAGES.map(p => (
+                <NavCard key={p.path} icon={p.icon} label={p.label} path={p.path} navigate={navigate} />
               ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+            </div>
+          </>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @keyframes spin   { to{transform:rotate(360deg)} }
+      `}</style>
     </div>
-  )
+  );
 }
