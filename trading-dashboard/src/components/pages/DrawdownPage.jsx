@@ -1,18 +1,30 @@
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, LineChart, Line, Legend, BarChart, Bar, Cell } from "recharts"
+import { XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, LineChart, Line, Legend, BarChart, Bar } from "recharts"
 import Panel from "../shared/Panel"
-import Metric from "../shared/Metric"
-import ChartTooltip from "../shared/ChartTooltip"
 import BackButton from "../layout/BackButton"
+import ChartTooltip from "../shared/ChartTooltip"
 
 const mono = "'Courier New', monospace"
 
 function calcDrawdown(portfolioArr) {
   let peak = 0
   return (portfolioArr || []).map(row => {
-    if (row.value > peak) peak = row.value
-    const dd = peak > 0 ? ((row.value - peak) / peak) * 100 : 0
-    return { date: row.date?.slice(2, 7), drawdown: parseFloat(dd.toFixed(2)), value: row.value }
+    const val = Number(row.value) || 0
+    if (val > peak) peak = val
+    const dd = peak > 0 ? parseFloat(((val - peak) / peak * 100).toFixed(2)) : 0
+    return { date: row.date?.slice(2, 7), drawdown: dd, value: val }
   })
+}
+
+function safeMin(arr) {
+  if (!arr || arr.length === 0) return 0
+  const vals = arr.map(d => d.drawdown).filter(v => isFinite(v))
+  return vals.length ? Math.min(...vals) : 0
+}
+
+function safeWorstLoss(trades) {
+  if (!trades || trades.length === 0) return 0
+  const losses = trades.map(t => Number(t.pnl)).filter(v => isFinite(v))
+  return losses.length ? Math.min(...losses) : 0
 }
 
 export default function DrawdownPage({ portfolio, trades, compare, onBack }) {
@@ -27,25 +39,24 @@ export default function DrawdownPage({ portfolio, trades, compare, onBack }) {
     MACRO:    macroDD[i]?.drawdown ?? null,
   })).filter((_, i) => i % 3 === 0)
 
-  const minStrategy = Math.min(...strategyDD.map(d => d.drawdown))
-  const minQuant    = Math.min(...quantDD.map(d => d.drawdown))
-  const minMacro    = Math.min(...macroDD.map(d => d.drawdown))
+  const minStrategy = safeMin(strategyDD)
+  const minQuant    = safeMin(quantDD)
+  const minMacro    = safeMin(macroDD)
 
-  const sells      = trades?.filter(t => t.action === "SELL" && t.pnl < 0) || []
-  const quantSells = (compare?.quant_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
-  const macroSells = (compare?.macro_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
+  const sells      = (trades || []).filter(t => t.action === "SELL" && Number(t.pnl) < 0)
+  const quantSells = (compare?.quant_trades || []).filter(t => t.action === "SELL" && Number(t.pnl) < 0)
+  const macroSells = (compare?.macro_trades || []).filter(t => t.action === "SELL" && Number(t.pnl) < 0)
+
+  const fmt = v => isFinite(v) && v !== 0 ? `₹${Number(v).toLocaleString()}` : "₹0"
 
   const summaryRows = [
-    ["MAX DRAWDOWN",   `${minStrategy.toFixed(2)}%`, `${minQuant.toFixed(2)}%`,    `${minMacro.toFixed(2)}%`,    "#ff3131"],
-    ["LOSING TRADES",  sells.length,                  quantSells.length,             macroSells.length,            "#cc44ff"],
-    ["WORST LOSS",     `₹${sells.length    ? Math.min(...sells.map(t => t.pnl)).toLocaleString()      : 0}`,
-                       `₹${quantSells.length ? Math.min(...quantSells.map(t => t.pnl)).toLocaleString() : 0}`,
-                       `₹${macroSells.length ? Math.min(...macroSells.map(t => t.pnl)).toLocaleString() : 0}`, "#ff3131"],
+    ["MAX DRAWDOWN",  `${minStrategy.toFixed(2)}%`, `${minQuant.toFixed(2)}%`, `${minMacro.toFixed(2)}%`, "#ff3131"],
+    ["LOSING TRADES", sells.length,                  quantSells.length,         macroSells.length,         "#cc44ff"],
+    ["WORST LOSS",    fmt(safeWorstLoss(sells)),      fmt(safeWorstLoss(quantSells)), fmt(safeWorstLoss(macroSells)), "#ff3131"],
   ]
 
   return (
     <div className="flex flex-col gap-3">
-
       <BackButton onBack={onBack} />
 
       {/* Summary stat cards */}
@@ -114,9 +125,9 @@ export default function DrawdownPage({ portfolio, trades, compare, onBack }) {
       <div className="grid grid-cols-2 gap-3">
         <Panel title="QUANT — LOSING TRADES" accent="#ff6600">
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={quantSells.map((t, i) => ({ trade: i + 1, loss: t.pnl }))}>
+            <BarChart data={quantSells.map((t, i) => ({ trade: i + 1, loss: Number(t.pnl) }))}>
               <XAxis dataKey="trade" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} />
-              <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `₹${(v / 1000).toFixed(1)}k`} />
+              <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `₹${(v/1000).toFixed(1)}k`} />
               <Tooltip content={<ChartTooltip />} />
               <ReferenceLine y={0} stroke="#444" />
               <Bar dataKey="loss" name="Loss" fill="#ff6600" fillOpacity={0.8} />
@@ -126,9 +137,9 @@ export default function DrawdownPage({ portfolio, trades, compare, onBack }) {
 
         <Panel title="MACRO — LOSING TRADES" accent="#00aaff">
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={macroSells.map((t, i) => ({ trade: i + 1, loss: t.pnl }))}>
+            <BarChart data={macroSells.map((t, i) => ({ trade: i + 1, loss: Number(t.pnl) }))}>
               <XAxis dataKey="trade" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} />
-              <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `₹${(v / 1000).toFixed(1)}k`} />
+              <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `₹${(v/1000).toFixed(1)}k`} />
               <Tooltip content={<ChartTooltip />} />
               <ReferenceLine y={0} stroke="#444" />
               <Bar dataKey="loss" name="Loss" fill="#00aaff" fillOpacity={0.8} />
