@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchJson } from "../../config/api";
 import { T, fmt, signalColor } from "../../config/tokens";
-import PageLayout from "../shared/PageLayout";
 import StatCard from "../shared/StatCard";
 import Panel from "../shared/Panel";
 import { SignalBadge } from "../shared/Badge";
@@ -17,7 +16,7 @@ const NAV_MODULES = [
   { icon: "∑", label: "Simulator",    path: "/simulator",  color: T.blue,   desc: "Strategy scaling" },
   { icon: "▦", label: "Heatmap",      path: "/heatmap",    color: T.mint,   desc: "Monthly returns" },
   { icon: "◐", label: "Screener",     path: "/screener",   color: T.green,  desc: "Signal filter" },
-  { icon: "☰", label: "News",         path: "/news",       color: T.textDim,"desc": "Market news" },
+  { icon: "☰", label: "News",         path: "/news",       color: T.textDim, desc: "Market news" },
   { icon: "◎", label: "Psychology",   path: "/psychology", color: T.purple, desc: "Bias detection" },
   { icon: "⚖", label: "Clients",      path: "/clients",    color: T.blue,   desc: "QUANT vs MACRO" },
   { icon: "◉", label: "Market",       path: "/market",     color: T.green,  desc: "IST clock · status" },
@@ -72,154 +71,89 @@ function ConfidenceBar({ confidence, color }) {
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ signal, stats, pnl }) {
   const navigate = useNavigate();
-  const [signal,  setSignal]  = useState(null);
-  const [stats,   setStats]   = useState(null);
-  const [pnl,     setPnl]     = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      const [sig, st, p] = await Promise.allSettled([
-        fetchJson("/signal"),
-        fetchJson("/stats"),
-        fetchJson("/pnl"),
-      ]);
-      if (sig.status === "fulfilled") setSignal(sig.value);
-      if (st.status  === "fulfilled") setStats(st.value);
-      if (p.status   === "fulfilled") setPnl(p.value);
-      setLoading(false);
-    }
-    load();
-  }, []);
-
   const sigColor = signal ? signalColor(signal.signal) : T.textDim;
 
   return (
-    <PageLayout>
-      {loading ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "60px 0", color: T.textDim, fontFamily: T.fontMono, fontSize: 12 }}>
-          <div style={{ width: 14, height: 14, border: `2px solid ${T.green}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-          Connecting to signal engine...
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, animation: "fadeUp 0.4s ease" }}>
+
+      {/* PAGE HEADER */}
+      <div>
+        <div style={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>
+          Overview
         </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, animation: "fadeUp 0.4s ease" }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>
+          Dashboard
+        </h1>
+      </div>
 
-          {/* ── PAGE HEADER ── */}
-          <div>
-            <div style={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>
-              Overview
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>
-              Dashboard
-            </h1>
+      {/* SIGNAL HERO */}
+      <div style={{
+        background: `linear-gradient(135deg, ${T.surface} 0%, rgba(34,197,94,0.04) 100%)`,
+        border: `1px solid ${T.border}`,
+        borderLeft: `4px solid ${sigColor}`,
+        borderRadius: T.rLg,
+        padding: "24px 28px",
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: 20,
+        boxShadow: signal ? `0 0 40px ${sigColor}10` : "none",
+      }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono, letterSpacing: "2px", textTransform: "uppercase" }}>
+            Today's ML Signal · {signal?.date ?? "—"}
           </div>
-
-          {/* ── SIGNAL HERO ── */}
-          <div style={{
-            background: `linear-gradient(135deg, ${T.surface} 0%, rgba(34,197,94,0.04) 100%)`,
-            border: `1px solid ${T.border}`,
-            borderLeft: `4px solid ${sigColor}`,
-            borderRadius: T.rLg,
-            padding: "24px 28px",
-            display: "flex", alignItems: "center",
-            justifyContent: "space-between", flexWrap: "wrap", gap: 20,
-            boxShadow: signal ? `0 0 40px ${sigColor}10` : "none",
-          }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono, letterSpacing: "2px", textTransform: "uppercase" }}>
-                Today's ML Signal · {signal?.date ?? "—"}
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <div style={{
-                  fontSize: 52, fontWeight: 900, color: sigColor,
-                  fontFamily: T.fontMono, letterSpacing: "-2px", lineHeight: 1,
-                }}>
-                  {signal?.signal ?? "—"}
-                </div>
-                {signal && <SignalBadge signal={signal.signal} size="lg" />}
-              </div>
-
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-                <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
-                  <span style={{ color: T.textFaint }}>Confidence </span>
-                  <span style={{ color: T.mint, fontWeight: 700 }}>{signal?.confidence ?? "—"}%</span>
-                </div>
-                <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
-                  <span style={{ color: T.textFaint }}>NSEI Close </span>
-                  <span style={{ color: T.text, fontWeight: 700 }}>₹{signal?.close?.toLocaleString("en-IN") ?? "—"}</span>
-                </div>
-                <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
-                  <span style={{ color: T.textFaint }}>Source </span>
-                  <span style={{ color: T.textDim }}>{signal?.source ?? "—"}</span>
-                </div>
-              </div>
-
-              {!signal && (
-                <div style={{ fontSize: 11, color: T.amber, fontFamily: T.fontMono }}>
-                  Signal unavailable — backend may be processing. Refresh in 30s.
-                </div>
-              )}
-            </div>
-
-            {signal && (
-              <ConfidenceBar confidence={signal.confidence} color={sigColor} />
-            )}
-          </div>
-
-          {/* ── STATS GRID ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-            <StatCard
-              label="Total Return"
-              value={stats ? fmt.pct(stats.total_return) : "—"}
-              color={T.green} icon="↑"
-              sub={stats ? `Final ₹${Number(stats.final_value).toLocaleString("en-IN")}` : undefined}
-            />
-            <StatCard
-              label="Win Rate"
-              value={stats ? fmt.conf(stats.win_rate) : "—"}
-              color={T.mint} icon="◎"
-              sub={stats ? `${stats.wins}W · ${stats.losses}L` : undefined}
-            />
-            <StatCard
-              label="Total Trades"
-              value={stats?.total_trades ?? "—"}
-              color={T.text} icon="⇄"
-            />
-            <StatCard
-              label="Cumulative PnL"
-              value={pnl ? fmt.inr(pnl.cumulative_pnl) : "—"}
-              color={pnl?.cumulative_pnl >= 0 ? T.green : T.red} icon="₹"
-            />
-            <StatCard
-              label="Best Trade"
-              value={pnl ? fmt.inr(pnl.best_trade) : "—"}
-              color={T.green} icon="▲"
-            />
-            <StatCard
-              label="Worst Trade"
-              value={pnl ? fmt.inr(pnl.worst_trade) : "—"}
-              color={T.red} icon="▼"
-            />
-          </div>
-
-          {/* ── MODULES ── */}
-          <Panel title="Platform Modules" accent={T.green}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-              gap: 10,
+              fontSize: 52, fontWeight: 900, color: sigColor,
+              fontFamily: T.fontMono, letterSpacing: "-2px", lineHeight: 1,
             }}>
-              {NAV_MODULES.map(item => (
-                <ModuleCard key={item.path} item={item} navigate={navigate} />
-              ))}
+              {signal?.signal ?? "—"}
             </div>
-          </Panel>
-
+            {signal && <SignalBadge signal={signal.signal} size="lg" />}
+          </div>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
+              <span style={{ color: T.textFaint }}>Confidence </span>
+              <span style={{ color: T.mint, fontWeight: 700 }}>{signal?.confidence ?? "—"}%</span>
+            </div>
+            <div style={{ fontFamily: T.fontMono, fontSize: 12 }}>
+              <span style={{ color: T.textFaint }}>NSEI Close </span>
+              <span style={{ color: T.text, fontWeight: 700 }}>₹{signal?.close?.toLocaleString("en-IN") ?? "—"}</span>
+            </div>
+          </div>
+          {!signal && (
+            <div style={{ fontSize: 11, color: T.amber, fontFamily: T.fontMono }}>
+              Signal unavailable — backend may be processing. Refresh in 30s.
+            </div>
+          )}
         </div>
-      )}
-    </PageLayout>
+        {signal && <ConfidenceBar confidence={signal.confidence} color={sigColor} />}
+      </div>
+
+      {/* STATS GRID */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+        <StatCard label="Total Return"   value={stats ? fmt.pct(stats.total_return) : "—"}  color={T.green} icon="↑" sub={stats ? `Final ₹${Number(stats.final_value).toLocaleString("en-IN")}` : undefined} />
+        <StatCard label="Win Rate"       value={stats ? fmt.conf(stats.win_rate) : "—"}      color={T.mint}  icon="◎" sub={stats ? `${stats.wins}W · ${stats.losses}L` : undefined} />
+        <StatCard label="Total Trades"   value={stats?.total_trades ?? "—"}                   color={T.text}  icon="⇄" />
+        <StatCard label="Cumulative PnL" value={pnl ? fmt.inr(pnl.cumulative_pnl) : "—"}     color={pnl?.cumulative_pnl >= 0 ? T.green : T.red} icon="₹" />
+        <StatCard label="Best Trade"     value={pnl ? fmt.inr(pnl.best_trade) : "—"}          color={T.green} icon="▲" />
+        <StatCard label="Worst Trade"    value={pnl ? fmt.inr(pnl.worst_trade) : "—"}          color={T.red}   icon="▼" />
+      </div>
+
+      {/* MODULES */}
+      <Panel title="Platform Modules" accent={T.green}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+          gap: 10,
+        }}>
+          {NAV_MODULES.map(item => (
+            <ModuleCard key={item.path} item={item} navigate={navigate} />
+          ))}
+        </div>
+      </Panel>
+
+    </div>
   );
 }

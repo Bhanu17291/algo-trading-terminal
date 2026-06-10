@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchJson } from "../../config/api";
 import { T, fmt } from "../../config/tokens";
-import PageLayout from "../shared/PageLayout";
 import Panel from "../shared/Panel";
 import Badge, { SignalBadge } from "../shared/Badge";
 import StatCard from "../shared/StatCard";
@@ -79,7 +78,7 @@ export default function TradePage() {
   const losses = trades.filter(t => t.action === "SELL" && Number(t.pnl) < 0).length;
 
   return (
-    <PageLayout>
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, animation: "fadeUp 0.4s ease" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 20, animation: "fadeUp 0.4s ease" }}>
 
         {/* Page header */}
@@ -209,6 +208,6 @@ export default function TradePage() {
         </Panel>
 
       </div>
-    </PageLayout>
+    </div>
   );
 }

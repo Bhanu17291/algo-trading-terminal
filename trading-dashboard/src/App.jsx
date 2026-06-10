@@ -1,13 +1,14 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+cimport { Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import PageLayout from "./components/shared/PageLayout";
 
-// Landing
+// Landing — no layout wrapper
 import LandingPage    from "./components/pages/LandingPage";
 
-// New pages with PageLayout built in
+// All dashboard pages — rendered inside LegacyWrapper which provides PageLayout + data
 import Dashboard      from "./components/pages/Dashboard";
 import TradePage      from "./components/pages/TradePage";
-
-// Legacy pages — still use old prop-based system, wrapped below
 import IndicatorsPage from "./components/pages/IndicatorsPage";
 import PsychPage      from "./components/pages/PsychPage";
 import MarketPage     from "./components/pages/MarketPage";
@@ -21,25 +22,22 @@ import ScreenerPage   from "./components/pages/ScreenerPage";
 import NewsPage       from "./components/pages/NewsPage";
 import ClientsPage    from "./components/pages/ClientsPage";
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import PageLayout from "./components/shared/PageLayout";
-
 const API = "https://algo-trading-terminal.onrender.com";
 
-// Wrapper: gives legacy pages the PageLayout shell + fetched data
-function LegacyWrapper({ Component }) {
+// ALL dashboard pages go through this wrapper
+// It provides: PageLayout (single sidebar+topbar) + fetched data as props
+function AppWrapper({ Component }) {
   const navigate = useNavigate();
-  const [signal,    setSignal]    = useState(null);
-  const [stats,     setStats]     = useState(null);
-  const [pnl,       setPnl]       = useState(null);
-  const [portfolio, setPortfolio] = useState([]);
-  const [psych,     setPsych]     = useState(null);
-  const [indicators,setIndicators]= useState([]);
-  const [trades,    setTrades]    = useState([]);
-  const [shap,      setShap]      = useState(null);
-  const [compare,   setCompare]   = useState(null);
-  const [loading,   setLoading]   = useState(true);
+  const [signal,     setSignal]     = useState(null);
+  const [stats,      setStats]      = useState(null);
+  const [pnl,        setPnl]        = useState(null);
+  const [portfolio,  setPortfolio]  = useState([]);
+  const [psych,      setPsych]      = useState(null);
+  const [indicators, setIndicators] = useState([]);
+  const [trades,     setTrades]     = useState([]);
+  const [shap,       setShap]       = useState(null);
+  const [compare,    setCompare]    = useState(null);
+  const [loading,    setLoading]    = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -103,29 +101,27 @@ function LegacyWrapper({ Component }) {
 export default function App() {
   return (
     <Routes>
-      {/* Landing */}
-      <Route path="/"            element={<LandingPage />} />
+      {/* Landing — no sidebar */}
+      <Route path="/"           element={<LandingPage />} />
 
-      {/* New pages — have PageLayout built in */}
-      <Route path="/dashboard"   element={<Dashboard />} />
-      <Route path="/trades"      element={<TradePage />} />
-
-      {/* Legacy pages — wrapped with PageLayout + data */}
-      <Route path="/indicators"  element={<LegacyWrapper Component={IndicatorsPage} />} />
-      <Route path="/psychology"  element={<LegacyWrapper Component={PsychPage} />} />
-      <Route path="/market"      element={<LegacyWrapper Component={MarketPage} />} />
-      <Route path="/explainer"   element={<LegacyWrapper Component={ExplainerPage} />} />
-      <Route path="/drawdown"    element={<LegacyWrapper Component={DrawdownPage} />} />
-      <Route path="/backtest"    element={<LegacyWrapper Component={BacktestPage} />} />
-      <Route path="/simulator"   element={<LegacyWrapper Component={SimulatorPage} />} />
-      <Route path="/risk"        element={<LegacyWrapper Component={RiskPage} />} />
-      <Route path="/heatmap"     element={<LegacyWrapper Component={HeatmapPage} />} />
-      <Route path="/screener"    element={<LegacyWrapper Component={ScreenerPage} />} />
-      <Route path="/news"        element={<LegacyWrapper Component={NewsPage} />} />
-      <Route path="/clients"     element={<LegacyWrapper Component={ClientsPage} />} />
+      {/* All dashboard pages — single PageLayout via AppWrapper */}
+      <Route path="/dashboard"  element={<AppWrapper Component={Dashboard} />} />
+      <Route path="/trades"     element={<AppWrapper Component={TradePage} />} />
+      <Route path="/indicators" element={<AppWrapper Component={IndicatorsPage} />} />
+      <Route path="/psychology" element={<AppWrapper Component={PsychPage} />} />
+      <Route path="/market"     element={<AppWrapper Component={MarketPage} />} />
+      <Route path="/explainer"  element={<AppWrapper Component={ExplainerPage} />} />
+      <Route path="/drawdown"   element={<AppWrapper Component={DrawdownPage} />} />
+      <Route path="/backtest"   element={<AppWrapper Component={BacktestPage} />} />
+      <Route path="/simulator"  element={<AppWrapper Component={SimulatorPage} />} />
+      <Route path="/risk"       element={<AppWrapper Component={RiskPage} />} />
+      <Route path="/heatmap"    element={<AppWrapper Component={HeatmapPage} />} />
+      <Route path="/screener"   element={<AppWrapper Component={ScreenerPage} />} />
+      <Route path="/news"       element={<AppWrapper Component={NewsPage} />} />
+      <Route path="/clients"    element={<AppWrapper Component={ClientsPage} />} />
 
       {/* Catch-all */}
-      <Route path="*"            element={<Navigate to="/" replace />} />
+      <Route path="*"           element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
