@@ -1,4 +1,4 @@
-cimport { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "./components/shared/PageLayout";
