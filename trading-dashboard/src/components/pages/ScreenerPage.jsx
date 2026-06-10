@@ -1,213 +1,168 @@
-import { useState, useEffect } from "react"
-import Panel from "../shared/Panel"
-import BackButton from "../layout/BackButton"
+import { useState } from "react";
+import { T } from "../../config/tokens";
 
-const mono = "'Courier New', monospace"
+const mono = T.fontMono;
 
 const NSE_STOCKS = [
-  { symbol: "RELIANCE.NS", name: "Reliance Industries" },
-  { symbol: "TCS.NS", name: "Tata Consultancy" },
+  { symbol: "RELIANCE.NS", name: "Reliance" },
+  { symbol: "TCS.NS",      name: "TCS" },
   { symbol: "HDFCBANK.NS", name: "HDFC Bank" },
-  { symbol: "INFY.NS", name: "Infosys" },
-  { symbol: "ICICIBANK.NS", name: "ICICI Bank" },
-  { symbol: "HINDUNILVR.NS", name: "Hindustan Unilever" },
-  { symbol: "SBIN.NS", name: "State Bank of India" },
-  { symbol: "BHARTIARTL.NS", name: "Bharti Airtel" },
-  { symbol: "ITC.NS", name: "ITC Limited" },
-  { symbol: "KOTAKBANK.NS", name: "Kotak Mahindra" },
-  { symbol: "LT.NS", name: "Larsen & Toubro" },
+  { symbol: "INFY.NS",     name: "Infosys" },
+  { symbol: "ICICIBANK.NS",name: "ICICI Bank" },
+  { symbol: "HINDUNILVR.NS",name:"HUL" },
+  { symbol: "SBIN.NS",     name: "SBI" },
+  { symbol: "BHARTIARTL.NS",name:"Airtel" },
+  { symbol: "ITC.NS",      name: "ITC" },
+  { symbol: "KOTAKBANK.NS",name: "Kotak" },
+  { symbol: "LT.NS",       name: "L&T" },
   { symbol: "AXISBANK.NS", name: "Axis Bank" },
-  { symbol: "ASIANPAINT.NS", name: "Asian Paints" },
-  { symbol: "MARUTI.NS", name: "Maruti Suzuki" },
-  { symbol: "WIPRO.NS", name: "Wipro" },
-]
+  { symbol: "ASIANPAINT.NS",name:"Asian Paints" },
+  { symbol: "MARUTI.NS",   name: "Maruti" },
+  { symbol: "WIPRO.NS",    name: "Wipro" },
+];
 
-// Deterministic signal generator based on symbol name
 function generateSignal(symbol) {
-  const hash = symbol.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-  const signals = ["BUY", "SELL", "HOLD"]
-  const signal = signals[hash % 3]
-  const confidence = 52 + (hash % 38)
-  const change = ((hash % 600) - 300) / 100
-  const price = 500 + (hash % 4500)
-  const rsi = 30 + (hash % 55)
-  return { signal, confidence, change, price, rsi }
+  const hash = symbol.split("").reduce((a,c) => a + c.charCodeAt(0), 0);
+  const signals = ["BUY","SELL","HOLD"];
+  return {
+    signal:     signals[hash % 3],
+    confidence: 52 + (hash % 38),
+    change:     ((hash % 600) - 300) / 100,
+    price:      500 + (hash % 4500),
+    rsi:        30 + (hash % 55),
+  };
 }
 
-export default function ScreenerPage({ onBack }) {
-  const [filter, setFilter] = useState("ALL")
-  const [sortBy, setSortBy] = useState("confidence")
-  const [scanned, setScanned] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState([])
+export default function ScreenerPage() {
+  const [filter,  setFilter]  = useState("ALL");
+  const [sortBy,  setSortBy]  = useState("confidence");
+  const [scanned, setScanned] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState([]);
 
   const runScan = () => {
-    setLoading(true)
+    setLoading(true);
     setTimeout(() => {
-      const data = NSE_STOCKS.map(stock => ({
-        ...stock,
-        ...generateSignal(stock.symbol),
-      }))
-      setResults(data)
-      setScanned(true)
-      setLoading(false)
-    }, 1800)
-  }
+      setResults(NSE_STOCKS.map(s => ({ ...s, ...generateSignal(s.symbol) })));
+      setScanned(true); setLoading(false);
+    }, 1200);
+  };
 
   const filtered = results
     .filter(r => filter === "ALL" || r.signal === filter)
-    .sort((a, b) => {
-      if (sortBy === "confidence") return b.confidence - a.confidence
-      if (sortBy === "change") return b.change - a.change
-      if (sortBy === "rsi") return b.rsi - a.rsi
-      return 0
-    })
+    .sort((a, b) => sortBy === "confidence" ? b.confidence - a.confidence : sortBy === "change" ? b.change - a.change : b.rsi - a.rsi);
 
-  const buys = results.filter(r => r.signal === "BUY").length
-  const sells = results.filter(r => r.signal === "SELL").length
-  const holds = results.filter(r => r.signal === "HOLD").length
+  const buys  = results.filter(r => r.signal === "BUY").length;
+  const sells = results.filter(r => r.signal === "SELL").length;
+  const holds = results.filter(r => r.signal === "HOLD").length;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-      <BackButton onBack={onBack} />
+      {/* Header */}
+      <div>
+        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Signal Filter</div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>NSE Stock Screener</h1>
+      </div>
 
-      {/* Scanner controls */}
-      <Panel title="NSE STOCK SCREENER — ML SIGNAL SCANNER">
-        <div style={{ fontSize: 11, color: "#666", fontFamily: mono, marginBottom: 16 }}>
-          Runs the XGBoost model across top 15 NSE stocks using latest technical indicators
-        </div>
-        <div className="flex gap-3 items-center flex-wrap">
-          <button
-            className={`btn btn-warning ${loading ? "loading" : ""}`}
-            style={{ fontFamily: mono }}
-            onClick={runScan}
-            disabled={loading}>
-            {loading ? "SCANNING..." : "⚡ RUN SCAN"}
-          </button>
-
-          <div className="join">
-            {["ALL", "BUY", "SELL", "HOLD"].map(f => (
-              <button key={f}
-                className={`btn btn-sm join-item ${filter === f ? "btn-warning" : "btn-outline"}`}
-                style={{ fontFamily: mono }}
-                onClick={() => setFilter(f)}>
-                {f}
-              </button>
+      {/* Controls + stat tiles */}
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr 1fr", gap: 10, alignItems: "stretch" }}>
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.green}`, borderRadius: T.rLg, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8, justifyContent: "center" }}>
+          <button onClick={runScan} disabled={loading} style={{
+            padding: "8px 16px", background: T.green, color: T.bg,
+            border: "none", borderRadius: T.r, fontFamily: mono,
+            fontSize: 10, fontWeight: 700, cursor: "pointer", letterSpacing: "1px",
+            opacity: loading ? 0.6 : 1,
+          }}>{loading ? "SCANNING..." : "⚡ RUN SCAN"}</button>
+          <div style={{ display: "flex", gap: 4 }}>
+            {["ALL","BUY","SELL","HOLD"].map(f => (
+              <button key={f} onClick={() => setFilter(f)} style={{
+                padding: "3px 8px", background: filter === f ? T.green : "transparent",
+                color: filter === f ? T.bg : T.textDim, border: `1px solid ${filter===f?T.green:T.border}`,
+                borderRadius: T.rSm, fontFamily: mono, fontSize: 8, cursor: "pointer", fontWeight: filter===f?700:400,
+              }}>{f}</button>
             ))}
           </div>
-
-          <select
-            className="select select-bordered select-sm"
-            style={{ fontFamily: mono, background: "#1a1a1a", color: "#ccc" }}
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}>
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{
+            background: "rgba(0,0,0,0.3)", border: `1px solid ${T.border}`, color: T.text,
+            fontFamily: mono, fontSize: 9, padding: "4px 8px", borderRadius: T.rSm,
+          }}>
             <option value="confidence">Sort: Confidence</option>
             <option value="change">Sort: Change %</option>
             <option value="rsi">Sort: RSI</option>
           </select>
         </div>
-      </Panel>
-
-      {/* Summary badges */}
-      {scanned && (
-        <div className="flex gap-3">
-          {[
-            ["BUY SIGNALS", buys, "#00ff41"],
-            ["SELL SIGNALS", sells, "#ff3131"],
-            ["HOLD SIGNALS", holds, "#ffd700"],
-            ["TOTAL SCANNED", results.length, "#ff6600"],
-          ].map(([l, v, c]) => (
-            <div key={l} className="stat bg-base-200 rounded-box border border-base-300 flex-1"
-              style={{ borderTop: `2px solid ${c}`, padding: "12px 16px" }}>
-              <div className="stat-title" style={{ fontFamily: mono, fontSize: 10 }}>{l}</div>
-              <div className="stat-value" style={{ color: c, fontFamily: mono, fontSize: 26 }}>{v}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Results table */}
-      {!scanned && !loading && (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div style={{ fontSize: 48 }}>🔍</div>
-          <div style={{ fontFamily: mono, fontSize: 14, color: "#666" }}>
-            Click RUN SCAN to screen all 15 NSE stocks
+        {[
+          { label: "BUY Signals",  value: scanned ? buys  : "—", color: T.green },
+          { label: "SELL Signals", value: scanned ? sells : "—", color: T.red },
+          { label: "HOLD Signals", value: scanned ? holds : "—", color: T.amber },
+          { label: "Total Scanned",value: scanned ? results.length : "—", color: T.text },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${color}`, borderRadius: T.rLg, padding: "12px 14px" }}>
+            <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: mono }}>{value}</div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {loading && (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <span className="loading loading-bars loading-lg" style={{ color: "#ff6600" }}></span>
-          <div style={{ fontFamily: mono, fontSize: 13, color: "#666" }}>
+      {/* Results */}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.green}`, borderRadius: T.rLg, padding: "14px 16px" }}>
+        {!scanned && !loading && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "40px 0", color: T.textFaint, fontFamily: mono, fontSize: 11 }}>
+            <div style={{ fontSize: 32 }}>🔍</div>
+            Click RUN SCAN to screen all 15 NSE stocks using the ML model
+          </div>
+        )}
+        {loading && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "40px 0", justifyContent: "center", color: T.textFaint, fontFamily: mono, fontSize: 11 }}>
+            <div style={{ width: 14, height: 14, border: `2px solid ${T.green}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
             Scanning NSE stocks with ML model...
           </div>
-        </div>
-      )}
+        )}
+        {scanned && !loading && (
+          <>
+            <div style={{ fontSize: 9, color: T.green, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 10 }}>
+              Scan Results — {filtered.length} stocks
+            </div>
+            {/* Header row */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 70px 120px 80px 70px 60px", gap: 8, padding: "6px 8px", borderBottom: `1px solid ${T.border}`, marginBottom: 4 }}>
+              {["Stock","Signal","Confidence","Price","Change","RSI"].map(h => (
+                <div key={h} style={{ fontSize: 8, color: T.textFaint, fontFamily: mono, letterSpacing: "1.5px", textTransform: "uppercase" }}>{h}</div>
+              ))}
+            </div>
+            {filtered.map((r, i) => {
+              const sigColor = r.signal==="BUY" ? T.green : r.signal==="SELL" ? T.red : T.amber;
+              const rsiColor = r.rsi > 70 ? T.red : r.rsi < 30 ? T.green : T.amber;
+              return (
+                <div key={i} style={{
+                  display: "grid", gridTemplateColumns: "1.5fr 70px 120px 80px 70px 60px", gap: 8,
+                  padding: "7px 8px", borderBottom: `1px solid ${T.border}`,
+                  background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)",
+                  borderLeft: `2px solid ${sigColor}`,
+                  alignItems: "center",
+                }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.text, fontFamily: mono }}>{r.name}</div>
+                    <div style={{ fontSize: 8, color: T.textFaint, fontFamily: mono }}>{r.symbol}</div>
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: sigColor, fontFamily: mono, padding: "2px 6px", border: `1px solid ${sigColor}`, borderRadius: T.rSm, textAlign: "center" }}>{r.signal}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 2 }}>
+                      <div style={{ width: `${r.confidence}%`, height: "100%", background: sigColor, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontSize: 10, color: sigColor, fontFamily: mono, fontWeight: 700, flexShrink: 0 }}>{r.confidence}%</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: T.text, fontFamily: mono }}>₹{r.price.toLocaleString("en-IN")}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: r.change>=0?T.green:T.red, fontFamily: mono }}>{r.change>=0?"+":""}{r.change.toFixed(2)}%</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: rsiColor, fontFamily: mono }}>{r.rsi.toFixed(1)}</div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
 
-      {scanned && !loading && (
-        <Panel title={`SCAN RESULTS — ${filtered.length} STOCKS`}>
-          <div className="overflow-x-auto">
-            <table className="table table-sm" style={{ fontFamily: mono }}>
-              <thead>
-                <tr style={{ color: "#ff6600", fontSize: 10, letterSpacing: 1 }}>
-                  <th>STOCK</th>
-                  <th>SIGNAL</th>
-                  <th>CONFIDENCE</th>
-                  <th>PRICE</th>
-                  <th>CHANGE</th>
-                  <th>RSI</th>
-                  <th>STRENGTH</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r, i) => {
-                  const sigColor = r.signal === "BUY" ? "#00ff41" : r.signal === "SELL" ? "#ff3131" : "#ffd700"
-                  return (
-                    <tr key={i} className="hover">
-                      <td>
-                        <div>
-                          <div style={{ color: "#fff", fontWeight: 700, fontSize: 12 }}>{r.name}</div>
-                          <div style={{ color: "#666", fontSize: 10 }}>{r.symbol}</div>
-                        </div>
-                      </td>
-                      <td>
-                        <div className={`badge badge-sm font-bold ${r.signal === "BUY" ? "badge-success" : r.signal === "SELL" ? "badge-error" : "badge-warning"}`}>
-                          {r.signal}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 rounded overflow-hidden" style={{ height: 6, background: "#222" }}>
-                            <div style={{ width: `${r.confidence}%`, height: "100%", background: sigColor }} />
-                          </div>
-                          <span style={{ color: sigColor, fontSize: 11 }}>{r.confidence}%</span>
-                        </div>
-                      </td>
-                      <td style={{ color: "#ccc" }}>₹{r.price.toLocaleString()}</td>
-                      <td style={{ color: r.change >= 0 ? "#00ff41" : "#ff3131", fontWeight: 700 }}>
-                        {r.change >= 0 ? "+" : ""}{r.change.toFixed(2)}%
-                      </td>
-                      <td>
-                        <span style={{
-                          color: r.rsi > 70 ? "#ff3131" : r.rsi < 30 ? "#00ff41" : "#ffd700",
-                          fontWeight: 700
-                        }}>{r.rsi.toFixed(1)}</span>
-                      </td>
-                      <td>
-                        <div className="w-20 rounded overflow-hidden" style={{ height: 6, background: "#222" }}>
-                          <div style={{ width: `${r.confidence}%`, height: "100%", background: sigColor }} />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
-      )}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
-  )
+  );
 }

@@ -1,150 +1,142 @@
-import { useState, useEffect } from "react"
-import Panel from "../shared/Panel"
-import BackButton from "../layout/BackButton"
+import { useState, useEffect } from "react";
+import { T } from "../../config/tokens";
 
-const mono = "'Courier New', monospace"
-const NEWS_API_KEY = "e49d012d11044821a1426a79e9a35045"
+const mono = T.fontMono;
+const NEWS_API_KEY = "e49d012d11044821a1426a79e9a35045";
 
 function getSentiment(title) {
-  const pos = ["surge", "rally", "gain", "rise", "bull", "growth", "profit", "high", "record", "strong", "up", "boost"]
-  const neg = ["fall", "drop", "crash", "loss", "bear", "decline", "weak", "low", "risk", "sell", "down", "cut"]
-  const text = title.toLowerCase()
-  const posScore = pos.filter(w => text.includes(w)).length
-  const negScore = neg.filter(w => text.includes(w)).length
-  if (posScore > negScore) return { label: "POSITIVE", color: "#00ff41", score: posScore }
-  if (negScore > posScore) return { label: "NEGATIVE", color: "#ff3131", score: negScore }
-  return { label: "NEUTRAL", color: "#ffd700", score: 0 }
+  const pos = ["surge","rally","gain","rise","bull","growth","profit","high","record","strong","up","boost"];
+  const neg = ["fall","drop","crash","loss","bear","decline","weak","low","risk","sell","down","cut"];
+  const text = title.toLowerCase();
+  const posScore = pos.filter(w => text.includes(w)).length;
+  const negScore = neg.filter(w => text.includes(w)).length;
+  if (posScore > negScore) return { label: "POSITIVE", color: T.green };
+  if (negScore > posScore) return { label: "NEGATIVE", color: T.red };
+  return { label: "NEUTRAL", color: T.amber };
 }
 
-export default function NewsPage({ onBack }) {
-  const [news, setNews] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [filter, setFilter] = useState("ALL")
+export default function NewsPage() {
+  const [news,    setNews]    = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
+  const [filter,  setFilter]  = useState("ALL");
 
   useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        const res = await fetch(
-          `https://newsapi.org/v2/everything?q=NSE+India+stock+market&language=en&sortBy=publishedAt&pageSize=20&apiKey=${NEWS_API_KEY}`
-        )
-        const data = await res.json()
+    fetch(`https://newsapi.org/v2/everything?q=NSE+India+stock+market&language=en&sortBy=publishedAt&pageSize=20&apiKey=${NEWS_API_KEY}`)
+      .then(r => r.json())
+      .then(data => {
         if (data.status === "ok") {
-          const articles = data.articles.map(a => ({
-            title: a.title,
-            source: a.source?.name,
-            url: a.url,
-            publishedAt: new Date(a.publishedAt).toLocaleString(),
+          setNews(data.articles.map(a => ({
+            title: a.title, source: a.source?.name, url: a.url,
+            publishedAt: new Date(a.publishedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
             sentiment: getSentiment(a.title),
-          }))
-          setNews(articles)
-        } else {
-          setError(data.message || "Failed to fetch news")
-        }
-      } catch (e) {
-        setError("Network error fetching news")
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchNews()
-  }, [])
+          })));
+        } else setError(data.message || "Failed to fetch");
+      })
+      .catch(() => setError("Network error — NewsAPI free tier only works on localhost"))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filtered = filter === "ALL" ? news : news.filter(n => n.sentiment.label === filter)
-  const positive = news.filter(n => n.sentiment.label === "POSITIVE").length
-  const negative = news.filter(n => n.sentiment.label === "NEGATIVE").length
-  const neutral = news.filter(n => n.sentiment.label === "NEUTRAL").length
-  const overallSentiment = positive > negative ? "BULLISH" : negative > positive ? "BEARISH" : "NEUTRAL"
-  const overallColor = positive > negative ? "#00ff41" : negative > positive ? "#ff3131" : "#ffd700"
+  const filtered  = filter === "ALL" ? news : news.filter(n => n.sentiment.label === filter);
+  const positive  = news.filter(n => n.sentiment.label === "POSITIVE").length;
+  const negative  = news.filter(n => n.sentiment.label === "NEGATIVE").length;
+  const neutral   = news.filter(n => n.sentiment.label === "NEUTRAL").length;
+  const overall   = positive > negative ? "BULLISH" : negative > positive ? "BEARISH" : "NEUTRAL";
+  const overallC  = positive > negative ? T.green : negative > positive ? T.red : T.amber;
 
   return (
-    <div className="flex flex-col gap-3">
-      <BackButton onBack={onBack} />
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-      {/* Overall sentiment */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* Header */}
+      <div>
+        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Market Intelligence</div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Market News Feed</h1>
+      </div>
+
+      {/* Stat tiles + filter */}
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr 1fr", gap: 10 }}>
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.green}`, borderRadius: T.rLg, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>Filter</div>
+          {["ALL","POSITIVE","NEUTRAL","NEGATIVE"].map(f => (
+            <button key={f} onClick={() => setFilter(f)} style={{
+              padding: "4px 10px", background: filter === f ? T.green : "transparent",
+              color: filter === f ? T.bg : T.textDim, border: `1px solid ${filter===f?T.green:T.border}`,
+              borderRadius: T.rSm, fontFamily: mono, fontSize: 8, cursor: "pointer", fontWeight: filter===f?700:400,
+            }}>{f}</button>
+          ))}
+        </div>
         {[
-          ["MARKET SENTIMENT", overallSentiment, overallColor],
-          ["POSITIVE NEWS", positive, "#00ff41"],
-          ["NEGATIVE NEWS", negative, "#ff3131"],
-          ["NEUTRAL NEWS", neutral, "#ffd700"],
-        ].map(([l, v, c]) => (
-          <div key={l} className="stat bg-base-200 rounded-box border border-base-300"
-            style={{ borderTop: `2px solid ${c}` }}>
-            <div className="stat-title" style={{ fontFamily: mono, fontSize: 10 }}>{l}</div>
-            <div className="stat-value" style={{ color: c, fontFamily: mono, fontSize: 22 }}>{v}</div>
+          { label: "Sentiment",     value: overall,  color: overallC },
+          { label: "Positive",      value: positive, color: T.green },
+          { label: "Negative",      value: negative, color: T.red },
+          { label: "Neutral",       value: neutral,  color: T.amber },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${color}`, borderRadius: T.rLg, padding: "10px 14px" }}>
+            <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+            <div style={{ fontSize: news.length > 0 ? 18 : 14, fontWeight: 700, color, fontFamily: mono }}>{value}</div>
           </div>
         ))}
       </div>
 
       {/* Sentiment bar */}
       {news.length > 0 && (
-        <Panel title="SENTIMENT DISTRIBUTION">
-          <div className="flex rounded overflow-hidden" style={{ height: 20 }}>
-            <div style={{ width: `${(positive / news.length) * 100}%`, background: "#00ff41", transition: "width 1s ease" }} />
-            <div style={{ width: `${(neutral / news.length) * 100}%`, background: "#ffd700", transition: "width 1s ease" }} />
-            <div style={{ width: `${(negative / news.length) * 100}%`, background: "#ff3131", transition: "width 1s ease" }} />
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.rLg, padding: "10px 14px" }}>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 6 }}>Sentiment Distribution</div>
+          <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+            <div style={{ width: `${(positive/news.length)*100}%`, background: T.green, transition: "width 1s ease" }} />
+            <div style={{ width: `${(neutral/news.length)*100}%`,  background: T.amber, transition: "width 1s ease" }} />
+            <div style={{ width: `${(negative/news.length)*100}%`, background: T.red,   transition: "width 1s ease" }} />
           </div>
-          <div className="flex gap-4 mt-2" style={{ fontFamily: mono, fontSize: 11 }}>
-            <span style={{ color: "#00ff41" }}>● POSITIVE {((positive / news.length) * 100).toFixed(0)}%</span>
-            <span style={{ color: "#ffd700" }}>● NEUTRAL {((neutral / news.length) * 100).toFixed(0)}%</span>
-            <span style={{ color: "#ff3131" }}>● NEGATIVE {((negative / news.length) * 100).toFixed(0)}%</span>
+          <div style={{ display: "flex", gap: 16 }}>
+            {[[T.green,"POSITIVE",positive],[T.amber,"NEUTRAL",neutral],[T.red,"NEGATIVE",negative]].map(([c,l,v]) => (
+              <span key={l} style={{ fontSize: 9, color: c, fontFamily: mono }}>● {l} {news.length > 0 ? ((v/news.length)*100).toFixed(0) : 0}%</span>
+            ))}
           </div>
-        </Panel>
+        </div>
       )}
 
-      {/* Filter */}
-      <div className="join">
-        {["ALL", "POSITIVE", "NEUTRAL", "NEGATIVE"].map(f => (
-          <button key={f}
-            className={`btn btn-sm join-item ${filter === f ? "btn-warning" : "btn-outline"}`}
-            style={{ fontFamily: mono }}
-            onClick={() => setFilter(f)}>
-            {f}
-          </button>
-        ))}
-      </div>
-
       {/* News feed */}
-      <Panel title={`LIVE NSE NEWS FEED — ${filtered.length} ARTICLES`}>
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.green}`, borderRadius: T.rLg, padding: "14px 16px", flex: 1, overflowY: "auto", maxHeight: 340 }}>
+        <div style={{ fontSize: 9, color: T.green, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 10 }}>
+          Live NSE News — {filtered.length} Articles
+        </div>
         {loading && (
-          <div className="flex items-center justify-center py-16 gap-3">
-            <span className="loading loading-spinner loading-lg" style={{ color: "#ff6600" }}></span>
-            <span style={{ fontFamily: mono, color: "#666" }}>Fetching latest market news...</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "40px 0", justifyContent: "center", color: T.textFaint, fontFamily: mono, fontSize: 11 }}>
+            <div style={{ width: 14, height: 14, border: `2px solid ${T.green}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            Fetching market news...
           </div>
         )}
         {error && (
-          <div className="alert alert-error" style={{ fontFamily: mono, fontSize: 12 }}>
-            ⚠️ {error} — NewsAPI free tier only works on localhost
+          <div style={{ padding: "12px 14px", background: "rgba(248,113,113,0.08)", border: `1px solid rgba(248,113,113,0.2)`, borderRadius: T.r, fontSize: 10, color: T.red, fontFamily: mono }}>
+            ⚠ {error}
           </div>
         )}
-        {!loading && !error && (
-          <div className="flex flex-col gap-3">
-            {filtered.map((article, i) => (
-              <div key={i} className="card bg-base-300 p-4 hover:bg-base-200 transition-colors cursor-pointer"
-                style={{ borderLeft: `3px solid ${article.sentiment.color}` }}
-                onClick={() => window.open(article.url, "_blank")}>
-                <div className="flex justify-between items-start gap-3">
-                  <div className="flex-1">
-                    <div style={{ fontSize: 13, color: "#fff", lineHeight: 1.5, marginBottom: 6 }}>
-                      {article.title}
-                    </div>
-                    <div className="flex gap-3 items-center">
-                      <span style={{ fontSize: 10, color: "#666", fontFamily: mono }}>{article.source}</span>
-                      <span style={{ fontSize: 10, color: "#444", fontFamily: mono }}>·</span>
-                      <span style={{ fontSize: 10, color: "#444", fontFamily: mono }}>{article.publishedAt}</span>
-                    </div>
-                  </div>
-                  <div className={`badge badge-sm shrink-0 ${article.sentiment.label === "POSITIVE" ? "badge-success" : article.sentiment.label === "NEGATIVE" ? "badge-error" : "badge-warning"}`}
-                    style={{ fontFamily: mono }}>
-                    {article.sentiment.label}
-                  </div>
+        {!loading && !error && filtered.map((a, i) => (
+          <div key={i} onClick={() => window.open(a.url,"_blank")} style={{
+            padding: "10px 12px", marginBottom: 6,
+            background: "rgba(0,0,0,0.15)", border: `1px solid ${T.border}`,
+            borderLeft: `2px solid ${a.sentiment.color}`, borderRadius: T.r,
+            cursor: "pointer", transition: "background 0.15s",
+          }}
+            onMouseOver={e => e.currentTarget.style.background = "rgba(34,197,94,0.04)"}
+            onMouseOut={e => e.currentTarget.style.background = "rgba(0,0,0,0.15)"}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: T.text, lineHeight: 1.5, marginBottom: 4 }}>{a.title}</div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <span style={{ fontSize: 9, color: T.textFaint, fontFamily: mono }}>{a.source}</span>
+                  <span style={{ fontSize: 9, color: T.textFaint, fontFamily: mono }}>{a.publishedAt}</span>
                 </div>
               </div>
-            ))}
+              <div style={{ padding: "2px 8px", border: `1px solid ${a.sentiment.color}`, borderRadius: T.rSm, fontSize: 8, color: a.sentiment.color, fontFamily: mono, fontWeight: 700, flexShrink: 0 }}>
+                {a.sentiment.label}
+              </div>
+            </div>
           </div>
-        )}
-      </Panel>
+        ))}
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
-  )
+  );
 }
