@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# ── CORS — must be added BEFORE routers and routes ───────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -47,11 +46,9 @@ from src.db_data import (
 
 app.include_router(live_router, prefix="/api")
 
-# ── Create ALL tables on startup ──────────────────────────────────────────────
-init_db()             # creates signals, trades, equity_curve (ORM models)
-ensure_ohlcv_table()  # creates ohlcv_features (raw SQL)
+init_db()
+ensure_ohlcv_table()
 
-# ── Load models ───────────────────────────────────────────────────────────────
 MODELS_DIR = "../models"
 model      = joblib.load(f"{MODELS_DIR}/xgb_model.pkl")
 lgbm_model = joblib.load(f"{MODELS_DIR}/lgbm_model.pkl")
@@ -64,14 +61,13 @@ w_lgbm     = weights["w_lgbm"]
 w_cat      = weights["w_cat"]
 
 print("[STARTUP] DB tables ready. Models loaded.")
+print(f"[STARTUP] dtype-fix v2 active — {len(FEATURES)} features")  # confirms new code
 
-# ── Cache paths ───────────────────────────────────────────────────────────────
 CACHE_DIR         = "../data/cache"
 SHAP_CACHE_PATH   = f"{CACHE_DIR}/shap_cache.json"
 SIGNAL_CACHE_PATH = f"{CACHE_DIR}/signal_cache.json"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-# ── SHAP (cached — expensive to recompute) ────────────────────────────────────
 if os.path.exists(SHAP_CACHE_PATH):
     print("[STARTUP] Loading SHAP from cache...")
     with open(SHAP_CACHE_PATH) as f:
@@ -104,8 +100,15 @@ else:
         json.dump(_shap_cache, f)
     print("[STARTUP] SHAP cached.")
 
+
+# ── dtype fix ─────────────────────────────────────────────────────────────────
+def _to_float(X: pd.DataFrame) -> pd.DataFrame:
+    return X.apply(pd.to_numeric, errors="coerce").fillna(0).astype(float)
+
+
 # ── Ensemble helpers ──────────────────────────────────────────────────────────
 def ensemble_proba(X):
+    X = _to_float(X)
     import xgboost as xgb
     p1 = (model.predict_proba(X)[:, 1]
           if hasattr(model, "predict_proba")
@@ -119,6 +122,7 @@ def ensemble_proba(X):
 
 
 def ensemble_predict(X):
+    X = _to_float(X)
     probs    = ensemble_proba(X)
     buy_prob = probs[:, 1]
     signals  = []
@@ -132,7 +136,6 @@ def ensemble_predict(X):
     return np.array(signals), probs.max(axis=1), probs
 
 
-# ── Market status ─────────────────────────────────────────────────────────────
 IST      = pytz.timezone("Asia/Kolkata")
 live_log = []
 
@@ -147,7 +150,6 @@ def is_market_open():
 
 
 def run_trading_loop():
-    """Runs every 5 min via scheduler, skips if market closed."""
     try:
         if not is_market_open():
             print(f"[{datetime.now(IST).strftime('%H:%M:%S')}] Market closed — skipping")
@@ -172,7 +174,6 @@ def run_trading_loop():
         print(f"[run_trading_loop ERROR] {e}")
 
 
-# ── Startup event — single scheduler ─────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
     import asyncio
@@ -180,9 +181,7 @@ async def startup():
 
     start_scheduler()
 
-    # Seed DB with full history if empty
     async def seed_db():
-        import asyncio
         loop = asyncio.get_event_loop()
         try:
             logger.info("[startup] Seeding DB with OHLCV data...")
@@ -196,7 +195,6 @@ async def startup():
     asyncio.create_task(seed_db())
 
 
-# ── Client data helper ────────────────────────────────────────────────────────
 def get_client_data():
     from src.database import SessionLocal, Trade as DBTrade, EquityCurvePoint
     db = SessionLocal()
@@ -247,10 +245,6 @@ def calc_stats(tl, pl):
     }
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ENDPOINTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @app.get("/")
 def root():
     return {"status": "ALGO TRADING API running (DB-first)"}
@@ -280,7 +274,7 @@ def get_latest_signal():
     finally:
         db.close()
 
-    # Fallback: compute live
+    # Fallback: compute live with explicit float cast
     latest_df = get_features_df(days=5)
     if latest_df.empty:
         return {"signal": "LOADING", "confidence": 0, "buy_prob": 0,
@@ -291,7 +285,10 @@ def get_latest_signal():
         return {"signal": "LOADING", "confidence": 0, "buy_prob": 0,
                 "date": date.today().isoformat(), "close": 0, "source": "features_missing"}
 
-    signals, confs, probs = ensemble_predict(latest_df[FEATURES].iloc[-1:])
+    # Explicit cast here too — belt and suspenders
+    X = latest_df[FEATURES].iloc[-1:].copy()
+    X = X.apply(pd.to_numeric, errors="coerce").fillna(0).astype(float)
+    signals, confs, probs = ensemble_predict(X)
     return {
         "signal":     {1: "BUY", -1: "SELL", 0: "HOLD"}.get(int(signals[0]), "HOLD"),
         "confidence": round(float(confs[0]) * 100, 2),
@@ -399,40 +396,24 @@ def get_psychology():
     rw   = round(sum(1 for p in recent if p > 0) / len(recent) * 100, 1) if recent else 0
     cs   = round(float(t["confidence"].tail(5).mean()) * 100, 2) if "confidence" in t.columns else 50
     score = 100 - [0, 10, 25, 40, 60][min(cl, 4)]
-    if dd > 10:
-        score -= 30
-    elif dd > 5:
-        score -= 20
-    elif dd > 2:
-        score -= 10
-    if rw < 20:
-        score -= 30
-    elif rw < 40:
-        score -= 15
-    if cs < 50:
-        score -= 10
+    if dd > 10: score -= 30
+    elif dd > 5: score -= 20
+    elif dd > 2: score -= 10
+    if rw < 20: score -= 30
+    elif rw < 40: score -= 15
+    if cs < 50: score -= 10
     score = max(0, min(100, score))
     alerts = []
-    if cl >= 3:
-        alerts.append("Revenge trading risk — 3+ consecutive losses detected")
-    elif cl == 2:
-        alerts.append("2 losses in a row — recency bias may affect next decision")
-    if dd > 5:
-        alerts.append(f"Portfolio down {dd}% from peak")
-    elif dd > 2:
-        alerts.append(f"Drawdown of {dd}% detected")
-    if rw < 40:
-        alerts.append("Win rate below 40% in last 5 trades")
-    if cs < 50:
-        alerts.append("Model confidence dropping")
-    if score >= 80:
-        s, m, c = "HEALTHY",      "Trading well. Continue normally.",          "#22c55e"
-    elif score >= 50:
-        s, m, c = "CAUTION",      "Signs of stress. Reduce size.",             "#f59e0b"
-    elif score >= 20:
-        s, m, c = "HIGH RISK",    "High emotional risk. Consider pausing.",    "#ef4444"
-    else:
-        s, m, c = "STOP TRADING", "Critical state. Stop trading now.",         "#dc2626"
+    if cl >= 3:   alerts.append("Revenge trading risk — 3+ consecutive losses detected")
+    elif cl == 2: alerts.append("2 losses in a row — recency bias may affect next decision")
+    if dd > 5:    alerts.append(f"Portfolio down {dd}% from peak")
+    elif dd > 2:  alerts.append(f"Drawdown of {dd}% detected")
+    if rw < 40:   alerts.append("Win rate below 40% in last 5 trades")
+    if cs < 50:   alerts.append("Model confidence dropping")
+    if score >= 80:   s, m, c = "HEALTHY",      "Trading well. Continue normally.",       "#22c55e"
+    elif score >= 50: s, m, c = "CAUTION",      "Signs of stress. Reduce size.",          "#f59e0b"
+    elif score >= 20: s, m, c = "HIGH RISK",    "High emotional risk. Consider pausing.", "#ef4444"
+    else:             s, m, c = "STOP TRADING", "Critical state. Stop trading now.",      "#dc2626"
     return {"score": score, "status": s, "message": m, "color": c,
             "consecutive_losses": cl, "drawdown_pct": dd,
             "recent_winrate": rw, "conf_score": cs, "alerts": alerts}
@@ -443,7 +424,6 @@ def get_shap():
     return _shap_cache
 
 
-# ── Walk-forward ──────────────────────────────────────────────────────────────
 def run_walk_forward_engine():
     from xgboost import XGBClassifier
     from sklearn.preprocessing import LabelEncoder
@@ -456,10 +436,12 @@ def run_walk_forward_engine():
         wle = LabelEncoder()
         ytr = wle.fit_transform(tr["label"])
         yte = wle.transform(te["label"])
+        tr_X = _to_float(tr[FEATURES])
+        te_X = _to_float(te[FEATURES])
         wm  = XGBClassifier(n_estimators=200, max_depth=4, learning_rate=0.05,
                              eval_metric="logloss", random_state=42)
-        wm.fit(tr[FEATURES], ytr)
-        probs = wm.predict_proba(te[FEATURES])
+        wm.fit(tr_X, ytr)
+        probs = wm.predict_proba(te_X)
         bp    = probs[:, 1]
         acc   = round(accuracy_score(yte, (bp >= 0.5).astype(int)) * 100, 2)
         cap, pos, wt, eq = 100000.0, None, [], []
@@ -492,8 +474,7 @@ def run_walk_forward_engine():
         ret = round((fv - 100000) / 100000 * 100, 2)
         pk, mdd = 100000, 0.0
         for e in eq:
-            if e["value"] > pk:
-                pk = e["value"]
+            if e["value"] > pk: pk = e["value"]
             mdd = max(mdd, (pk - e["value"]) / pk * 100)
         nr = round((float(te["close"].iloc[-1]) - float(te["close"].iloc[0])) /
                    float(te["close"].iloc[0]) * 100, 2)
@@ -561,10 +542,8 @@ def get_clients_compare():
     mm = {r["date"]: r["value"] for r in mp}
     full_df = get_features_df()
     full_df.index = full_df.index.astype(str)
-
     combined = []
     nr = 0.0
-
     if not full_df.empty and "close" in full_df.columns:
         ip = float(full_df["close"].iloc[0])
         for d in sorted(set(qm) | set(mm)):
@@ -576,7 +555,6 @@ def get_clients_compare():
     else:
         for d in sorted(set(qm) | set(mm)):
             combined.append({"date": d, "QUANT": qm.get(d), "MACRO": mm.get(d), "NSEI": None})
-
     qs = calc_stats(qt, qp)
     ms = calc_stats(mt, mp)
     return {"quant_stats": qs, "macro_stats": ms, "chart_data": combined,
@@ -586,7 +564,53 @@ def get_clients_compare():
                       "macro_vs_nsei": round(ms["total_return"] - nr, 2)}}
 
 
-# ── Admin endpoints ───────────────────────────────────────────────────────────
+@app.get("/meta")
+def get_meta():
+    import yfinance as yf
+    version_path = f"{MODELS_DIR}/version.txt"
+    if os.path.exists(version_path):
+        with open(version_path) as f:
+            model_version = f.read().strip()
+    else:
+        try:
+            mtime = max(
+                os.path.getmtime(f"{MODELS_DIR}/{fn}")
+                for fn in ["xgb_model.pkl", "lgbm_model.pkl", "cat_model.pkl"]
+                if os.path.exists(f"{MODELS_DIR}/{fn}")
+            )
+            model_version = f"v{datetime.fromtimestamp(mtime).strftime('%Y.%m')}"
+        except Exception:
+            model_version = "v5.0"
+        with open(version_path, "w") as f:
+            f.write(model_version)
+    feature_count = len(FEATURES)
+    try:
+        df = get_features_df()
+        if not df.empty:
+            start_year, end_year, total_days = df.index[0].year, df.index[-1].year, len(df)
+            backtest_range = f"{start_year}–{end_year}"
+        else:
+            start_year, end_year, total_days, backtest_range = 2020, 2026, 1481, "2020–2026"
+    except Exception:
+        start_year, end_year, total_days, backtest_range = 2020, 2026, 1481, "2020–2026"
+    optuna_log = "../data/optuna_trials.json"
+    optuna_trials = json.load(open(optuna_log)).get("trials_per_model", 80) if os.path.exists(optuna_log) else 80
+    try:
+        nsei = yf.download("^NSEI", start=f"{start_year}-01-01", progress=False, auto_adjust=True)
+        nsei_return = round((float(nsei["Close"].dropna().iloc[-1]) - float(nsei["Close"].dropna().iloc[0])) / float(nsei["Close"].dropna().iloc[0]) * 100, 2) if not nsei.empty else None
+    except Exception:
+        nsei_return = None
+    quote_path = "../data/strategy_quote.txt"
+    strategy_quote = open(quote_path).read().strip() if os.path.exists(quote_path) else "In markets, the disciplined mind with data beats intuition every time. Our ML ensemble doesn't guess — it calculates."
+    return {
+        "model_version": model_version, "feature_count": feature_count,
+        "total_days": total_days, "backtest_range": backtest_range,
+        "start_year": start_year, "end_year": end_year,
+        "optuna_trials": optuna_trials, "nsei_return": nsei_return,
+        "strategy_quote": strategy_quote,
+        "footer_label": f"ML ENSEMBLE {model_version} · {total_days:,} DAYS · {feature_count} FEATURES",
+    }
+
 
 @app.post("/admin/backfill")
 def trigger_backfill():
@@ -609,11 +633,11 @@ def db_status():
     last = get_last_stored_date()
     db   = SessionLocal()
     try:
-        n_signals = db.query(Signal).count()
-        n_trades  = db.query(Trade).count()
+        return {"last_ohlcv_date": last,
+                "total_signals": db.query(Signal).count(),
+                "total_trades":  db.query(Trade).count()}
     finally:
         db.close()
-    return {"last_ohlcv_date": last, "total_signals": n_signals, "total_trades": n_trades}
 
 
 @app.post("/admin/rebuild-features")
@@ -621,7 +645,6 @@ def rebuild_features():
     from src.db_data import upsert_ohlcv_bulk, get_features_df
     from src.incremental_learn import engineer_features, make_label, generate_and_store_signal
     import yfinance as yf
-
     raw = yf.download("^NSEI", start="2020-01-01", progress=False)
     if isinstance(raw.columns, pd.MultiIndex):
         raw.columns = raw.columns.droplevel(1)
@@ -629,108 +652,13 @@ def rebuild_features():
     raw.columns = [c.lower() for c in raw.columns]
     raw = raw.rename(columns={"open": "Open", "high": "High", "low": "Low",
                                "close": "Close", "volume": "Volume"})
-
     featured = engineer_features(raw)
     featured = make_label(featured)
     featured = featured.dropna()
-
     store_df = featured.copy()
     store_df.columns = [c.lower() for c in store_df.columns]
     upsert_ohlcv_bulk(store_df)
-
     df = get_features_df(days=5)
     sig, conf = generate_and_store_signal(df)
-
     return {"status": "rebuilt", "rows": len(featured), "signal": sig,
-            "confidence": round(conf * 100, 2)}# fixed 
-# ── ADD THIS ENDPOINT TO main.py ─────────────────────────────────────────────
-# Place it near the bottom with the other GET endpoints
-
-@app.get("/meta")
-def get_meta():
-    """Returns dynamic system metadata — replaces all hardcoded frontend values."""
-    import yfinance as yf
-    from src.db_data import get_features_df
-
-    # ── Model version from file ──
-    version_path = f"{MODELS_DIR}/version.txt"
-    if os.path.exists(version_path):
-        with open(version_path) as f:
-            model_version = f.read().strip()
-    else:
-        # Auto-detect from most recently modified model file
-        try:
-            mtime = max(
-                os.path.getmtime(f"{MODELS_DIR}/{fn}")
-                for fn in ["xgb_model.pkl", "lgbm_model.pkl", "cat_model.pkl"]
-                if os.path.exists(f"{MODELS_DIR}/{fn}")
-            )
-            model_version = f"v{datetime.fromtimestamp(mtime).strftime('%Y.%m')}"
-        except Exception:
-            model_version = "v5.0"
-        # Write it for next time
-        with open(version_path, "w") as f:
-            f.write(model_version)
-
-    # ── Feature count ──
-    feature_count = len(FEATURES)
-
-    # ── Training date range from DB ──
-    try:
-        df = get_features_df()
-        if not df.empty:
-            start_year = df.index[0].year
-            end_year   = df.index[-1].year
-            total_days = len(df)
-            backtest_range = f"{start_year}–{end_year}"
-        else:
-            start_year, end_year, total_days = 2020, 2026, 1481
-            backtest_range = "2020–2026"
-    except Exception:
-        start_year, end_year, total_days = 2020, 2026, 1481
-        backtest_range = "2020–2026"
-
-    # ── Optuna trials from log or default ──
-    optuna_log = "../data/optuna_trials.json"
-    if os.path.exists(optuna_log):
-        with open(optuna_log) as f:
-            trial_data = json.load(f)
-        optuna_trials = trial_data.get("trials_per_model", 80)
-    else:
-        optuna_trials = 80
-
-    # ── NSEI benchmark return ──
-    try:
-        nsei = yf.download("^NSEI", start=f"{start_year}-01-01", progress=False, auto_adjust=True)
-        if not nsei.empty:
-            p0 = float(nsei["Close"].dropna().iloc[0])
-            p1 = float(nsei["Close"].dropna().iloc[-1])
-            nsei_return = round((p1 - p0) / p0 * 100, 2)
-        else:
-            nsei_return = None
-    except Exception:
-        nsei_return = None
-
-    # ── Strategy quote (configurable) ──
-    quote_path = "../data/strategy_quote.txt"
-    if os.path.exists(quote_path):
-        with open(quote_path) as f:
-            strategy_quote = f.read().strip()
-    else:
-        strategy_quote = (
-            "In markets, the disciplined mind with data beats intuition every time. "
-            "Our ML ensemble doesn't guess — it calculates."
-        )
-
-    return {
-        "model_version":   model_version,
-        "feature_count":   feature_count,
-        "total_days":      total_days,
-        "backtest_range":  backtest_range,
-        "start_year":      start_year,
-        "end_year":        end_year,
-        "optuna_trials":   optuna_trials,
-        "nsei_return":     nsei_return,
-        "strategy_quote":  strategy_quote,
-        "footer_label":    f"ML ENSEMBLE {model_version} · {total_days:,} DAYS · {feature_count} FEATURES",
-    }
+            "confidence": round(conf * 100, 2)}
