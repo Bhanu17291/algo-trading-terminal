@@ -1,15 +1,13 @@
 /**
  * src/hooks/useBackendWake.js
- *
- * Pings the backend every 3 s until it responds (or 90 s timeout).
- * Returns { awake, elapsed, failed } for the WakeScreen UI.
  */
 
 import { useState, useEffect, useRef } from "react";
 
 const API = "https://algo-trading-terminal.onrender.com";
 const PING_MS = 3000;
-const MAX_WAIT_MS = 90000;
+const MAX_WAIT_MS = 180000; // 3 min — Render free tier can take ~2 min
+const FETCH_TO_MS = 15000; // 15s per ping attempt
 
 export function useBackendWake() {
     const [awake, setAwake] = useState(false);
@@ -38,7 +36,7 @@ export function useBackendWake() {
 
             try {
                 const res = await fetch(`${API}/signal`, {
-                    signal: AbortSignal.timeout(5000),
+                    signal: AbortSignal.timeout(FETCH_TO_MS),
                 });
                 if (res.ok) {
                     awakeRef.current = true;
@@ -47,7 +45,7 @@ export function useBackendWake() {
                     clearInterval(pingRef.current);
                 }
             } catch {
-                // still cold — next ping via interval
+                // still cold — retry in PING_MS
             }
         }
 

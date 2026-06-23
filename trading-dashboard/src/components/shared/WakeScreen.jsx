@@ -1,20 +1,18 @@
 /**
  * src/components/shared/WakeScreen.jsx
- *
- * Shown while the Render backend cold-starts.
- * Matches the existing terminal design (JetBrains Mono, dark bg, green accent).
  */
 
 import { T } from "../../config/tokens";
 
-const MAX_S = 90;
+const MAX_S = 180;  // 3 min
 
 const MESSAGES = [
-  { at:  0, text: "Connecting to backend…" },
-  { at:  8, text: "Server is waking up on Render free tier…" },
-  { at: 20, text: "Still starting — this takes 30–50 s on first visit…" },
-  { at: 40, text: "Almost there, hang tight…" },
-  { at: 60, text: "Taking longer than usual, still trying…" },
+  { at:   0, text: "Connecting to backend…" },
+  { at:   8, text: "Server is waking up on Render free tier…" },
+  { at:  20, text: "Still starting — this takes 30–120 s on first visit…" },
+  { at:  60, text: "Allocating compute resources, almost there…" },
+  { at: 100, text: "Taking longer than usual, still trying…" },
+  { at: 140, text: "Final startup steps, hang tight…" },
 ];
 
 function currentMessage(elapsed) {
@@ -28,7 +26,7 @@ function currentMessage(elapsed) {
 export default function WakeScreen({ elapsed, failed, onRetry }) {
   const pct     = Math.min((elapsed / MAX_S) * 100, 99);
   const message = failed
-    ? "Backend did not respond after 90 s."
+    ? "Backend did not respond after 3 min."
     : currentMessage(elapsed);
 
   return (
@@ -45,7 +43,6 @@ export default function WakeScreen({ elapsed, failed, onRetry }) {
         alignItems: "center",
       }}>
 
-        {/* Logo mark */}
         <div style={{
           fontSize: 11, letterSpacing: "4px", textTransform: "uppercase",
           color: "rgba(231,240,234,0.25)",
@@ -53,7 +50,6 @@ export default function WakeScreen({ elapsed, failed, onRetry }) {
           NSEI · ALGO TERMINAL
         </div>
 
-        {/* Spinner or checkmark */}
         {!failed ? (
           <div style={{ position: "relative", width: 56, height: 56 }}>
             <svg width="56" height="56" viewBox="0 0 56 56" style={{ transform: "rotate(-90deg)" }}>
@@ -79,18 +75,12 @@ export default function WakeScreen({ elapsed, failed, onRetry }) {
           <div style={{ fontSize: 36, color: "#EF4444" }}>✕</div>
         )}
 
-        {/* Status text */}
-        <div style={{
-          textAlign: "center",
-          display: "flex", flexDirection: "column", gap: 8,
-        }}>
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{
-            fontSize: 13, color: "rgba(231,240,234,0.85)", fontWeight: 600,
-            minHeight: 20,
+            fontSize: 13, color: "rgba(231,240,234,0.85)", fontWeight: 600, minHeight: 20,
           }}>
             {message}
           </div>
-
           {!failed && (
             <div style={{ fontSize: 11, color: "rgba(231,240,234,0.3)" }}>
               Pinging every 3 s · auto-loads when ready
@@ -98,7 +88,6 @@ export default function WakeScreen({ elapsed, failed, onRetry }) {
           )}
         </div>
 
-        {/* Progress bar */}
         {!failed && (
           <div style={{
             width: "100%", height: 3,
@@ -115,7 +104,6 @@ export default function WakeScreen({ elapsed, failed, onRetry }) {
           </div>
         )}
 
-        {/* Retry button (only on failure) */}
         {failed && (
           <button
             onClick={onRetry}
@@ -136,10 +124,6 @@ export default function WakeScreen({ elapsed, failed, onRetry }) {
           </button>
         )}
       </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }
