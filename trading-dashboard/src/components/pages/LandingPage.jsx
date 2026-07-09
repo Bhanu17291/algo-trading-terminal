@@ -1,439 +1,27 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchJson } from "../../config/api";
 
-/*
-  COLOR PALETTE — Institutional Green / Slate
-  ─────────────────────────────────────────────
-  Background:   #060D0A  (near-black with green tint)
-  Surface:      #0C1A14  (dark forest)
-  Card:         #101F17  (deep green-slate)
-  Primary:      #22C55E  (emerald green)
-  Accent:       #86EFAC  (soft mint)
-  Highlight:    #BBF7D0  (pale green for text)
-  Muted:        #4B7A5E  (slate-green)
-  Text:         #E7F0EA  (warm off-white)
-  Danger:       #F87171  (soft red for sells)
-  Warning:      #FBBF24  (amber for holds)
-*/
-
-const C = {
-  bg:        "#060D0A",
-  surface:   "#0C1A14",
-  card:      "#101F17",
-  border:    "rgba(34,197,94,0.14)",
-  borderHov: "rgba(34,197,94,0.38)",
-  primary:   "#22C55E",
-  accent:    "#86EFAC",
-  highlight: "#BBF7D0",
-  muted:     "#4B7A5E",
-  text:      "#E7F0EA",
-  textDim:   "rgba(231,240,234,0.5)",
-  textFaint: "rgba(231,240,234,0.28)",
-  danger:    "#F87171",
-  warning:   "#FBBF24",
+const T = {
+  bg:       "#040A06",
+  surface:  "#0D1A13",
+  border:   "rgba(34,197,94,0.1)",
+  borderMd: "rgba(34,197,94,0.2)",
+  green:    "#22C55E",
+  greenDim: "#16A34A",
+  mint:     "#86EFAC",
+  pale:     "#BBF7D0",
+  text:     "#E7F0EA",
+  textDim:  "rgba(231,240,234,0.55)",
+  textFaint:"rgba(231,240,234,0.25)",
+  red:      "#F87171",
+  amber:    "#FBBF24",
+  blue:     "#60A5FA",
+  purple:   "#C084FC",
+  mono:     "'JetBrains Mono','Fira Code','Courier New',monospace",
+  sans:     "'Inter','Segoe UI',system-ui,sans-serif",
 };
 
-const S = {
-  root: {
-    fontFamily: "'Georgia', 'Times New Roman', serif",
-    background: C.bg,
-    color: C.text,
-    overflowX: "hidden",
-    minHeight: "100vh",
-  },
-
-  /* LOADER */
-  loader: (done) => ({
-    position: "fixed", inset: 0, zIndex: 9999,
-    background: C.bg,
-    display: "flex", flexDirection: "column",
-    alignItems: "center", justifyContent: "center",
-    gap: 0,
-    transition: "opacity 0.9s ease, visibility 0.9s ease",
-    opacity: done ? 0 : 1,
-    visibility: done ? "hidden" : "visible",
-  }),
-  loaderLogo: {
-    fontSize: 13, letterSpacing: "4px", textTransform: "uppercase",
-    color: C.accent, marginBottom: 32, fontFamily: "'Segoe UI', sans-serif",
-    fontWeight: 400,
-  },
-  loaderBar: {
-    width: 180, height: 1, background: `rgba(34,197,94,0.12)`,
-    marginTop: 20,
-  },
-  loaderFill: (pct) => ({
-    height: "100%", width: `${pct}%`,
-    background: C.primary,
-    transition: "width 0.08s linear",
-  }),
-  loaderPct: {
-    fontSize: 11, color: C.muted,
-    marginTop: 12, letterSpacing: "1px",
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-
-  /* NAV */
-  nav: {
-    position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "0 6%", height: 60,
-    background: `rgba(6,13,10,0.88)`,
-    backdropFilter: "blur(20px)",
-    borderBottom: `1px solid ${C.border}`,
-  },
-  logo: {
-    fontSize: 15, fontWeight: 700, letterSpacing: "1px",
-    textTransform: "uppercase",
-    color: C.accent,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  navLinks: {
-    display: "flex", gap: 36, listStyle: "none", margin: 0, padding: 0,
-  },
-  navLink: {
-    fontSize: 12.5, color: C.textDim, cursor: "pointer",
-    textDecoration: "none", letterSpacing: "0.6px",
-    fontFamily: "'Segoe UI', sans-serif",
-    textTransform: "uppercase",
-  },
-  navCta: {
-    padding: "7px 20px", borderRadius: 4, fontSize: 12, fontWeight: 600,
-    cursor: "pointer",
-    background: "transparent",
-    border: `1px solid ${C.primary}`,
-    color: C.primary,
-    letterSpacing: "0.8px", textTransform: "uppercase",
-    fontFamily: "'Segoe UI', sans-serif",
-    transition: "background 0.2s, color 0.2s",
-  },
-
-  /* HERO */
-  hero: {
-    minHeight: "100vh", display: "flex", alignItems: "center",
-    justifyContent: "center", flexDirection: "column",
-    padding: "120px 6% 80px", textAlign: "center", position: "relative",
-  },
-  heroBadge: {
-    display: "inline-flex", alignItems: "center", gap: 8,
-    padding: "5px 14px", borderRadius: 2,
-    border: `1px solid rgba(34,197,94,0.3)`,
-    background: `rgba(34,197,94,0.05)`,
-    fontSize: 10.5, letterSpacing: "2px", textTransform: "uppercase",
-    color: C.accent, marginBottom: 32,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  heroDot: {
-    width: 5, height: 5, borderRadius: "50%",
-    background: C.primary, animation: "blink 2s infinite",
-  },
-  h1: {
-    fontSize: "clamp(2.2rem,5vw,4rem)", fontWeight: 700,
-    lineHeight: 1.12, letterSpacing: "-0.5px", marginBottom: 22,
-    color: C.highlight,
-    maxWidth: 780,
-  },
-  h1Span: { color: C.primary },
-  heroSub: {
-    fontSize: "clamp(0.9rem,1.6vw,1.05rem)",
-    color: C.textDim, maxWidth: 580,
-    lineHeight: 1.8, marginBottom: 44,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  heroButtons: { display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" },
-  btnPrimary: {
-    padding: "12px 30px", borderRadius: 4, fontSize: 13, fontWeight: 600,
-    cursor: "pointer", border: "none",
-    background: C.primary,
-    color: "#060D0A", letterSpacing: "0.5px",
-    fontFamily: "'Segoe UI', sans-serif",
-    transition: "opacity 0.2s, transform 0.15s",
-  },
-  btnSecondary: {
-    padding: "12px 30px", borderRadius: 4, fontSize: 13, fontWeight: 500,
-    cursor: "pointer",
-    background: "transparent",
-    border: `1px solid rgba(134,239,172,0.3)`,
-    color: C.accent, letterSpacing: "0.5px",
-    fontFamily: "'Segoe UI', sans-serif",
-    transition: "border-color 0.2s, color 0.2s",
-  },
-
-  /* STATS */
-  statsStrip: {
-    display: "flex", flexWrap: "wrap", justifyContent: "center",
-    padding: "50px 6%",
-    borderTop: `1px solid ${C.border}`,
-    borderBottom: `1px solid ${C.border}`,
-    background: C.surface,
-    gap: 0,
-  },
-  statCard: {
-    flex: "1 1 130px", textAlign: "center",
-    padding: "24px 16px",
-    borderRight: `1px solid ${C.border}`,
-  },
-  statNum: {
-    fontSize: 30, fontWeight: 700, color: C.primary,
-    fontFamily: "'Segoe UI', sans-serif", letterSpacing: "-0.5px",
-  },
-  statLabel: {
-    fontSize: 11, color: C.textFaint, marginTop: 6,
-    letterSpacing: "0.8px", textTransform: "uppercase",
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-
-  /* MARQUEE */
-  marqueeWrap: { position: "relative", overflow: "hidden", padding: "12px 0" },
-  marqueeGradL: {
-    position: "absolute", left: 0, top: 0, bottom: 0, width: 80, zIndex: 2,
-    background: `linear-gradient(90deg,${C.bg},transparent)`,
-  },
-  marqueeGradR: {
-    position: "absolute", right: 0, top: 0, bottom: 0, width: 80, zIndex: 2,
-    background: `linear-gradient(-90deg,${C.bg},transparent)`,
-  },
-  marqueeTrack: (dir, paused) => ({
-    display: "flex", gap: 10, width: "max-content",
-    animation: `marquee${dir} 36s linear infinite`,
-    animationPlayState: paused ? "paused" : "running",
-  }),
-  marqueeBadge: {
-    padding: "6px 16px", borderRadius: 2, fontSize: 11.5, fontWeight: 500,
-    whiteSpace: "nowrap", letterSpacing: "0.6px",
-    border: `1px solid rgba(34,197,94,0.18)`,
-    background: `rgba(34,197,94,0.04)`, color: C.muted,
-    cursor: "default", textTransform: "uppercase",
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-
-  /* SECTION */
-  section: { padding: "90px 6%" },
-  sectionLabel: {
-    fontSize: 10.5, letterSpacing: "2.5px", textTransform: "uppercase",
-    color: C.muted, marginBottom: 14,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  sectionTitle: {
-    fontSize: "clamp(1.6rem,3vw,2.4rem)", fontWeight: 700,
-    letterSpacing: "-0.3px", lineHeight: 1.25, marginBottom: 16,
-    color: C.highlight,
-  },
-  sectionSub: {
-    fontSize: 14.5, color: C.textDim, maxWidth: 520, lineHeight: 1.8,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-
-  /* FEATURE GRID */
-  featureGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-    gap: 1, marginTop: 56,
-    border: `1px solid ${C.border}`,
-    borderRadius: 8, overflow: "hidden",
-  },
-  featureCard: (hov) => ({
-    padding: "32px 28px",
-    background: hov ? `rgba(34,197,94,0.06)` : C.card,
-    borderRight: `1px solid ${C.border}`,
-    borderBottom: `1px solid ${C.border}`,
-    transition: "background 0.25s",
-    cursor: "default",
-  }),
-  featureIcon: { fontSize: 22, marginBottom: 16 },
-  featureTitle: {
-    fontSize: 15, fontWeight: 600, marginBottom: 10, color: C.highlight,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  featureDesc: {
-    fontSize: 13, color: C.textDim, lineHeight: 1.75,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  featureTag: {
-    display: "inline-block", marginTop: 14,
-    padding: "2px 9px", borderRadius: 2, fontSize: 10,
-    letterSpacing: "0.8px", background: `rgba(34,197,94,0.07)`,
-    border: `1px solid rgba(34,197,94,0.2)`, color: C.muted,
-    textTransform: "uppercase", fontFamily: "'Segoe UI', sans-serif",
-  },
-
-  /* ARCHITECTURE */
-  archWrap: {
-    display: "flex", flexDirection: "column", alignItems: "center",
-    gap: 0, marginTop: 56,
-  },
-  archNode: (i) => ({
-    display: "flex", alignItems: "center", gap: 18,
-    padding: "16px 28px", borderRadius: 4,
-    background: C.card,
-    border: `1px solid ${C.border}`,
-    width: "100%", maxWidth: 460,
-    animation: `fadeUp 0.5s ease ${i * 0.1}s both`,
-  }),
-  archConnector: {
-    width: 1, height: 24,
-    background: C.muted, opacity: 0.4,
-  },
-  archNum: {
-    width: 28, height: 28, borderRadius: 2, flexShrink: 0,
-    background: `rgba(34,197,94,0.12)`,
-    border: `1px solid rgba(34,197,94,0.3)`,
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 11, fontWeight: 700, color: C.primary,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  archLabel: {
-    fontSize: 14, fontWeight: 600, color: C.highlight,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  archSub: {
-    fontSize: 11.5, color: C.textFaint, marginTop: 2,
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-
-  /* ANALYTICS */
-  analyticsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
-    gap: 1, marginTop: 56,
-    border: `1px solid ${C.border}`,
-    borderRadius: 6, overflow: "hidden",
-  },
-  analyticsCard: {
-    padding: "22px 20px",
-    background: C.card,
-    borderRight: `1px solid ${C.border}`,
-    borderBottom: `1px solid ${C.border}`,
-  },
-  analyticsLabel: {
-    fontSize: 10, color: C.textFaint, letterSpacing: "1.2px",
-    marginBottom: 10, textTransform: "uppercase",
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  signalBuy: {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    padding: "3px 10px", borderRadius: 2, fontSize: 12, fontWeight: 700,
-    background: `rgba(34,197,94,0.1)`,
-    border: `1px solid rgba(34,197,94,0.3)`,
-    color: C.primary, fontFamily: "'Segoe UI', sans-serif",
-  },
-  signalHold: {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    padding: "3px 10px", borderRadius: 2, fontSize: 12, fontWeight: 700,
-    background: `rgba(251,191,36,0.08)`,
-    border: `1px solid rgba(251,191,36,0.25)`,
-    color: C.warning, fontFamily: "'Segoe UI', sans-serif",
-  },
-
-  /* CTA */
-  ctaSection: {
-    padding: "100px 6%", textAlign: "center",
-    background: C.surface,
-    borderTop: `1px solid ${C.border}`,
-    borderBottom: `1px solid ${C.border}`,
-  },
-
-  /* FOOTER */
-  footer: {
-    padding: "56px 6% 36px",
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
-    gap: 40,
-  },
-  footerTitle: {
-    fontSize: 11, fontWeight: 700, color: C.accent,
-    marginBottom: 16, letterSpacing: "1px", textTransform: "uppercase",
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  footerLink: {
-    display: "block", fontSize: 12.5, color: C.textFaint,
-    marginBottom: 10, cursor: "pointer",
-    fontFamily: "'Segoe UI', sans-serif",
-  },
-  footerCopy: {
-    padding: "20px 6%", textAlign: "center",
-    fontSize: 11, color: C.textFaint,
-    borderTop: `1px solid ${C.border}`,
-    fontFamily: "'Segoe UI', sans-serif",
-    letterSpacing: "0.4px",
-  },
-};
-
-/* ─── DATA ─────────────────────────────────────────────────────────── */
-const FEATURES = [
-  { icon: "◈", tag: "XGBoost · LightGBM · CatBoost", title: "Ensemble ML Engine", desc: "Combines three gradient boosting frameworks to reduce variance and improve signal robustness across NSEI market regimes." },
-  { icon: "◎", tag: "BUY · HOLD · Real-Time", title: "Signal Generation", desc: "Generates actionable trading recommendations using live feature pipelines and ensemble model consensus scores." },
-  { icon: "◉", tag: "SHAP · Transparency", title: "Explainable AI", desc: "Surfaces SHAP feature attributions for every signal — showing exactly which indicators drove each recommendation." },
-  { icon: "▦", tag: "PnL · Holdings · Exposure", title: "Portfolio Analytics", desc: "Institutional-grade dashboard tracking live holdings, cumulative PnL, risk exposure, and portfolio drawdown in real time." },
-  { icon: "⟲", tag: "Historical · Walk-Forward", title: "Backtesting Engine", desc: "Evaluate strategies against full NSEI price history using walk-forward validation and out-of-sample performance metrics." },
-  { icon: "⊕", tag: "Position Sizing · VaR", title: "Risk Management", desc: "Quantitative position sizing, stop-loss simulation, maximum drawdown controls, and portfolio-level exposure management." },
-  { icon: "∑", tag: "Factor Models · Alpha", title: "Quant Simulator", desc: "Simulates factor-based investment strategies and alpha signal execution across configurable time horizons." },
-  { icon: "⊞", tag: "Macro · Regime Analysis", title: "Macro Simulator", desc: "Models macroeconomic regime shifts and aligns portfolio positioning with prevailing market conditions." },
-];
-
-const ARCH = [
-  { label: "Market Data Ingestion", sub: "NSEI OHLCV · Volume · Orderflow" },
-  { label: "Feature Engineering", sub: "150+ Technical & Macro Indicators" },
-  { label: "Ensemble ML Models", sub: "XGBoost · LightGBM · CatBoost" },
-  { label: "SHAP Explainability", sub: "Per-signal feature attribution" },
-  { label: "Signal Engine", sub: "BUY / HOLD generation pipeline" },
-  { label: "Portfolio Management", sub: "Holdings tracking · PnL analytics" },
-  { label: "Risk Analytics", sub: "Drawdown · Position sizing · VaR" },
-];
-
-const MARQUEE1 = ["Machine Learning","Quantitative Finance","Explainable AI","Portfolio Analytics","NSEI Signals","Backtesting","Risk Management","Walk-Forward Validation","Alpha Generation","Factor Models"];
-const MARQUEE2 = ["XGBoost","LightGBM","CatBoost","SHAP","MACD","RSI","Bollinger Bands","Drawdown Analytics","Heatmaps","Position Sizing","Quant Investing","Macro Investing","ATR","EMA","Regime Detection"];
-
-const STATS = [
-  { num: "92%",   label: "Signal Accuracy" },
-  { num: "500K+", label: "Historical Records" },
-  { num: "150+",  label: "Indicators Evaluated" },
-  { num: "24/7",  label: "Market Monitoring" },
-  { num: "50+",   label: "Backtest Scenarios" },
-  { num: "<1ms",  label: "Signal Latency" },
-];
-
-/* ─── CANDLESTICK SVG ───────────────────────────────────────────────── */
-function CandleChart() {
-  const candles = [
-    {x:10,o:80,c:62,h:55,l:88,bull:false},{x:34,o:63,c:48,h:42,l:68,bull:true},
-    {x:58,o:47,c:58,h:40,l:62,bull:true},{x:82,o:57,c:50,h:44,l:63,bull:false},
-    {x:106,o:51,c:38,h:30,l:55,bull:true},{x:130,o:39,c:52,h:32,l:57,bull:true},
-    {x:154,o:53,c:44,h:38,l:58,bull:false},{x:178,o:45,c:32,h:26,l:50,bull:true},
-    {x:202,o:33,c:47,h:26,l:52,bull:true},{x:226,o:48,c:40,h:34,l:54,bull:false},
-    {x:250,o:41,c:28,h:20,l:46,bull:true},
-  ];
-  return (
-    <svg viewBox="0 0 290 110" style={{ width:"100%", maxWidth:320, opacity:0.9 }}>
-      {candles.map((c,i) => (
-        <g key={i}>
-          <line x1={c.x+7} y1={c.h} x2={c.x+7} y2={c.l}
-            stroke={c.bull ? "#22C55E" : "#F87171"} strokeWidth="1"/>
-          <rect x={c.x} y={Math.min(c.o,c.c)} width={14}
-            height={Math.abs(c.o-c.c)||2}
-            fill={c.bull ? "#22C55E" : "#F87171"} rx="1" opacity="0.85"/>
-        </g>
-      ))}
-      <polyline
-        points="17,80 41,63 65,47 89,57 113,51 137,39 161,53 185,45 209,33 233,48 257,41"
-        fill="none" stroke="#86EFAC" strokeWidth="0.8" strokeDasharray="3 3" opacity="0.45"/>
-    </svg>
-  );
-}
-
-/* ─── MINI BAR CHART ─────────────────────────────────────────────────── */
-function MiniBar({ color = "#22C55E" }) {
-  const bars = [28,44,38,60,50,72,58,80,66,88];
-  return (
-    <svg viewBox="0 0 110 44" style={{ width:"100%", height:44 }}>
-      {bars.map((h,i) => (
-        <rect key={i} x={i*11+1} y={44-h*0.42} width={9} height={h*0.42}
-          fill={color} opacity={0.18 + (i/bars.length)*0.7} rx="1.5"/>
-      ))}
-    </svg>
-  );
-}
-
-/* ─── PARTICLE CANVAS ────────────────────────────────────────────────── */
 function ParticleCanvas() {
   const ref = useRef(null);
   useEffect(() => {
@@ -443,287 +31,465 @@ function ParticleCanvas() {
     function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
     resize();
     window.addEventListener("resize", resize);
-    for (let i = 0; i < 48; i++) pts.push({
-      x: Math.random()*1400, y: Math.random()*900,
-      vx: (Math.random()-0.5)*0.25, vy: (Math.random()-0.5)*0.25,
-      r: Math.random()*1.2+0.4,
+    for (let i = 0; i < 55; i++) pts.push({
+      x: Math.random() * 1600, y: Math.random() * 900,
+      vx: (Math.random() - 0.5) * 0.2, vy: (Math.random() - 0.5) * 0.2,
+      r: Math.random() * 1.1 + 0.3,
     });
     function draw() {
-      ctx.clearRect(0,0,W,H);
+      ctx.clearRect(0, 0, W, H);
       pts.forEach(p => {
         p.x += p.vx; p.y += p.vy;
-        if(p.x<0) p.x=W; if(p.x>W) p.x=0;
-        if(p.y<0) p.y=H; if(p.y>H) p.y=0;
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-        ctx.fillStyle="rgba(34,197,94,0.28)"; ctx.fill();
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(34,197,94,0.22)"; ctx.fill();
       });
-      for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
-        const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, d=Math.sqrt(dx*dx+dy*dy);
-        if(d<120){ ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y);
-          ctx.strokeStyle=`rgba(34,197,94,${0.06*(1-d/120)})`; ctx.lineWidth=0.5; ctx.stroke(); }
+      for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 110) {
+          ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.strokeStyle = `rgba(34,197,94,${0.05 * (1 - d / 110)})`; ctx.lineWidth = 0.5; ctx.stroke();
+        }
       }
       raf = requestAnimationFrame(draw);
     }
     draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize",resize); };
-  },[]);
-  return <canvas ref={ref} style={{position:"fixed",inset:0,zIndex:0,pointerEvents:"none",opacity:0.55}}/>;
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
+  }, []);
+  return <canvas ref={ref} style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", opacity: 0.5 }} />;
 }
 
-/* ─── MARQUEE ─────────────────────────────────────────────────────────── */
-function Marquee({ items, reverse }) {
-  const [paused, setPaused] = useState(false);
-  const doubled = [...items,...items];
-  return (
-    <div style={S.marqueeWrap} onMouseEnter={()=>setPaused(true)} onMouseLeave={()=>setPaused(false)}>
-      <div style={S.marqueeGradL}/><div style={S.marqueeGradR}/>
-      <div style={S.marqueeTrack(reverse?"R":"L", paused)}>
-        {doubled.map((t,i)=><span key={i} style={S.marqueeBadge}>— {t}</span>)}
-      </div>
-    </div>
-  );
-}
+const MODULES = [
+  { icon: "◈", label: "ML Engine",  path: "/dashboard"  },
+  { icon: "◉", label: "Explainer",  path: "/explainer"  },
+  { icon: "⟲", label: "Backtest",   path: "/backtest"   },
+  { icon: "▦", label: "Portfolio",  path: "/dashboard"  },
+  { icon: "⊕", label: "Risk Calc",  path: "/risk"       },
+  { icon: "∿", label: "Indicators", path: "/indicators" },
+  { icon: "↘", label: "Drawdown",   path: "/drawdown"   },
+  { icon: "∑", label: "Simulator",  path: "/simulator"  },
+  { icon: "⚖", label: "Clients",    path: "/clients"    },
+  { icon: "◐", label: "Screener",   path: "/screener"   },
+  { icon: "☰", label: "News",       path: "/news"       },
+  { icon: "◉", label: "Market",     path: "/market"     },
+];
 
-/* ─── LANDING PAGE ────────────────────────────────────────────────────── */
+const PIPELINE = [
+  { icon: "↓", label: "Data",     sub: "NSEI OHLCV"   },
+  { icon: "⚙", label: "Features", sub: "27 indicators" },
+  { icon: "◈", label: "Ensemble", sub: "XGB+LGB+CAT"  },
+  { icon: "◉", label: "SHAP",     sub: "Attribution"  },
+  { icon: "⚡", label: "Signal",   sub: "BUY / HOLD"   },
+];
+
 export default function LandingPage() {
-  const [loaderDone, setLoaderDone] = useState(false);
-  const [loadPct, setLoadPct]       = useState(0);
-  const [hovCard, setHovCard]       = useState(null);
+  const navigate = useNavigate();
+  const [signal, setSignal] = useState(null);
+  const [stats,  setStats]  = useState(null);
+  const [market, setMarket] = useState(null);
+  const [hovMod, setHovMod] = useState(null);
+  const [hovNav, setHovNav] = useState(null);
 
   useEffect(() => {
-    const iv = setInterval(() => {
-      setLoadPct(p => {
-        if(p>=100){ clearInterval(iv); setTimeout(()=>setLoaderDone(true),500); return 100; }
-        return Math.min(100, p + Math.random()*10);
-      });
-    }, 75);
-    return () => clearInterval(iv);
-  },[]);
+    Promise.allSettled([
+      fetchJson("/signal"),
+      fetchJson("/stats"),
+      fetchJson("/market-status"),
+    ]).then(([sig, st, mk]) => {
+      if (sig.status === "fulfilled") setSignal(sig.value);
+      if (st.status  === "fulfilled") setStats(st.value);
+      if (mk.status  === "fulfilled") setMarket(mk.value);
+    });
+  }, []);
 
   useEffect(() => {
     const el = document.createElement("style");
     el.textContent = `
-      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-      @keyframes marqueeL { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-      @keyframes marqueeR { from{transform:translateX(-50%)} to{transform:translateX(0)} }
-      @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-      @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-      .chart-float { animation: floatY 5s ease-in-out infinite; }
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+      @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.35} }
+      @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes spin   { to{transform:rotate(360deg)} }
     `;
     document.head.appendChild(el);
     return () => document.head.removeChild(el);
-  },[]);
+  }, []);
+
+  const goTo = (path) => navigate(path);
+  const sigColor = signal?.signal === "BUY" ? T.green : signal?.signal === "SELL" ? T.red : T.amber;
+  const confBars = Math.round((signal?.confidence ?? 0) / 10);
+
+  const s = {
+    root: {
+      minHeight: "100vh", background: T.bg, color: T.text,
+      fontFamily: T.sans, position: "relative", overflow: "hidden",
+    },
+    nav: {
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 28px", height: 50,
+      background: "rgba(4,10,6,0.95)", backdropFilter: "blur(20px)",
+      borderBottom: `1px solid ${T.border}`,
+    },
+    logo: { display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: "none", border: "none" },
+    logoMark: {
+      width: 26, height: 26, background: T.green, borderRadius: 5,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 13, color: T.bg, fontWeight: 900,
+    },
+    logoText: { fontFamily: T.mono, fontSize: 12, fontWeight: 700, color: T.mint, letterSpacing: "1.5px" },
+    navLink: (hov) => ({
+      padding: "5px 12px", fontSize: 11, color: hov ? T.mint : "rgba(231,240,234,0.4)",
+      border: "none", background: hov ? "rgba(34,197,94,0.07)" : "none",
+      cursor: "pointer", borderRadius: 4, fontFamily: T.sans, transition: "all 0.15s",
+    }),
+    liveBadge: {
+      display: "flex", alignItems: "center", gap: 5,
+      padding: "4px 10px", border: `1px solid rgba(34,197,94,0.25)`,
+      borderRadius: 20, fontSize: 9, color: T.green, fontFamily: T.mono, letterSpacing: "1px",
+    },
+    liveDot: { width: 5, height: 5, borderRadius: "50%", background: T.green, animation: "pulse 2s infinite" },
+    ctaBtn: {
+      padding: "6px 16px", background: T.green, color: T.bg,
+      border: "none", borderRadius: 5, fontSize: 10, fontWeight: 700,
+      cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans, transition: "opacity 0.15s",
+    },
+    // HERO
+    hero: {
+      display: "grid", gridTemplateColumns: "1.1fr 0.9fr",
+      paddingTop: 50, minHeight: "calc(100vh - 240px)",
+      position: "relative", zIndex: 1,
+    },
+    heroLeft: {
+      padding: "32px 28px 24px",
+      borderRight: `1px solid ${T.border}`,
+      display: "flex", flexDirection: "column", justifyContent: "space-between",
+    },
+    heroRight: { padding: "24px 24px 20px", display: "flex", flexDirection: "column", gap: 12 },
+    eyebrow: {
+      fontSize: 9, color: T.green, letterSpacing: "3px",
+      textTransform: "uppercase", fontFamily: T.mono, marginBottom: 10,
+    },
+    h1: { fontSize: "clamp(28px,3.5vw,38px)", fontWeight: 900, lineHeight: 1.04, letterSpacing: "-2px", color: "#fff", marginBottom: 6 },
+    accentBar: { width: 40, height: 2, background: T.green, margin: "10px 0 12px" },
+    desc: { fontSize: 12, color: T.textDim, lineHeight: 1.75, maxWidth: 360, marginBottom: 16 },
+    btnRow: { display: "flex", gap: 8, alignItems: "center" },
+    btnPrimary: {
+      padding: "9px 20px", background: T.green, color: T.bg,
+      border: "none", borderRadius: 5, fontSize: 10, fontWeight: 700,
+      cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans, transition: "all 0.15s",
+    },
+    btnSecondary: {
+      padding: "9px 20px", background: "transparent", color: T.mint,
+      border: `1px solid rgba(134,239,172,0.2)`, borderRadius: 5,
+      fontSize: 10, cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans, transition: "all 0.15s",
+    },
+    // PIPELINE
+    pipeline: {
+      display: "flex", alignItems: "stretch",
+      background: "rgba(13,26,19,0.5)", border: `1px solid ${T.border}`,
+      borderRadius: 6, overflow: "hidden",
+    },
+    pipeStep: {
+      flex: 1, padding: "8px 4px", textAlign: "center",
+      borderRight: `1px solid ${T.border}`,
+    },
+    // SIGNAL CARD
+    signalCard: {
+      background: "linear-gradient(135deg,rgba(34,197,94,0.07),rgba(34,197,94,0.02))",
+      border: `1px solid ${T.borderMd}`, borderRadius: 8, padding: "14px 16px",
+    },
+    // BOTTOM
+    bottom: {
+      display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+      borderTop: `1px solid ${T.border}`,
+      position: "relative", zIndex: 1,
+    },
+    col: { padding: "16px 22px", borderRight: `1px solid ${T.border}` },
+    colLast: { padding: "16px 20px" },
+    colLabel: {
+      fontSize: 7, color: "rgba(231,240,234,0.18)", letterSpacing: "3px",
+      textTransform: "uppercase", fontFamily: T.mono, marginBottom: 8,
+    },
+    // CLIENTS
+    clients: { display: "grid", gridTemplateColumns: "1fr 16px 1fr" },
+    clientCard: (accent) => ({
+      background: "rgba(13,26,19,0.6)",
+      border: `1px solid ${T.border}`,
+      borderTop: `2px solid ${accent}`,
+      borderRadius: 4, padding: "8px 10px",
+    }),
+    cstat: {
+      display: "flex", justifyContent: "space-between",
+      padding: "3px 0", borderBottom: `1px solid rgba(34,197,94,0.06)`,
+    },
+    // MODULES
+    modGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 4 },
+    mod: (hov) => ({
+      background: hov ? "rgba(34,197,94,0.06)" : "rgba(13,26,19,0.6)",
+      border: `1px solid ${hov ? "rgba(34,197,94,0.3)" : T.border}`,
+      borderRadius: 4, padding: "7px 5px", cursor: "pointer",
+      transition: "all 0.15s", textAlign: "center",
+    }),
+    // PSYCH
+    psychCard: {
+      background: "rgba(13,26,19,0.6)",
+      border: `1px solid rgba(192,132,252,0.15)`,
+      borderLeft: `2px solid ${T.purple}`,
+      borderRadius: 5, padding: "10px 12px",
+    },
+    // FOOTER
+    footer: {
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "8px 28px", borderTop: `1px solid ${T.border}`,
+      background: "rgba(4,10,6,0.8)", position: "relative", zIndex: 1,
+    },
+    footerTag: {
+      padding: "3px 8px", background: "rgba(34,197,94,0.07)",
+      border: `1px solid rgba(34,197,94,0.15)`, borderRadius: 3,
+      fontSize: 7, color: T.green, fontFamily: T.mono, letterSpacing: "1px",
+    },
+  };
 
   return (
-    <div style={S.root}>
-      <ParticleCanvas/>
-
-      {/* LOADER */}
-      <div style={S.loader(loaderDone)}>
-        <div style={S.loaderLogo}>AlgoTerminal · NSEI</div>
-        <div style={{ fontSize:11, color: C.textFaint, letterSpacing:"2px", fontFamily:"'Segoe UI',sans-serif" }}>
-          Initialising Signal Engine
-        </div>
-        <div style={S.loaderBar}><div style={S.loaderFill(loadPct)}/></div>
-        <div style={S.loaderPct}>{Math.min(100,Math.round(loadPct))}%</div>
-      </div>
+    <div style={s.root}>
+      <ParticleCanvas />
 
       {/* NAV */}
-      <nav style={S.nav}>
-        <div style={S.logo}>AlgoTerminal</div>
-        <ul style={S.navLinks}>
-          {["Features","Architecture","Analytics","Research"].map(l=>(
-            <li key={l}><a style={S.navLink}>{l}</a></li>
-          ))}
-        </ul>
-        <button style={S.navCta}
-          onMouseOver={e=>{e.currentTarget.style.background=C.primary;e.currentTarget.style.color="#060D0A"}}
-          onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.primary}}>
-          Launch App
+      <nav style={s.nav}>
+        <button style={s.logo} onClick={() => window.scrollTo({ top: 0 })}>
+          <div style={s.logoMark}>⚡</div>
+          <div style={s.logoText}>AlgoTerminal</div>
         </button>
+        <div style={{ display: "flex", gap: 2 }}>
+          {["Features","Analytics","Clients","Research"].map((l, i) => (
+            <button key={l} style={s.navLink(hovNav === i)}
+              onMouseEnter={() => setHovNav(i)} onMouseLeave={() => setHovNav(null)}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={s.liveBadge}><div style={s.liveDot} />LIVE</div>
+          <button style={s.ctaBtn} onClick={() => goTo("/dashboard")}
+            onMouseOver={e => e.currentTarget.style.opacity = "0.85"}
+            onMouseOut={e => e.currentTarget.style.opacity = "1"}>
+            Launch App →
+          </button>
+        </div>
       </nav>
 
       {/* HERO */}
-      <section style={{...S.hero, zIndex:1}}>
-        <div style={S.heroBadge}><span style={S.heroDot}/> Live · NSEI · ML Signals</div>
-        <h1 style={S.h1}>
-          AI-Powered Quantitative<br/>
-          <span style={S.h1Span}>Trading Intelligence</span>
-        </h1>
-        <p style={S.heroSub}>
-          Machine Learning, Explainable AI, Backtesting, Portfolio Analytics,
-          and Institutional-Grade Risk Management for NSEI Markets.
-        </p>
-        <div style={S.heroButtons}>
-          <button style={S.btnPrimary}
-            onMouseOver={e=>e.currentTarget.style.opacity="0.85"}
-            onMouseOut={e=>e.currentTarget.style.opacity="1"}>
-            Explore Platform
-          </button>
-          <button style={S.btnSecondary}
-            onMouseOver={e=>{e.currentTarget.style.borderColor="rgba(134,239,172,0.6)";e.currentTarget.style.color=C.highlight}}
-            onMouseOut={e=>{e.currentTarget.style.borderColor="rgba(134,239,172,0.3)";e.currentTarget.style.color=C.accent}}>
-            View Analytics
-          </button>
+      <div style={s.hero}>
+        {/* LEFT */}
+        <div style={s.heroLeft}>
+          <div>
+            <div style={s.eyebrow}>● NSEI · Ensemble ML · Real-time Signals</div>
+            <h1 style={s.h1}>
+              Quantitative<br/>
+              <span style={{ color: T.green }}>Trading</span>{" "}
+              <span style={{ color: "rgba(255,255,255,0.4)" }}>meets</span><br/>
+              Machine Learning
+            </h1>
+            <div style={s.accentBar} />
+            <p style={s.desc}>
+              Live NSEI data → 27 engineered features →{" "}
+              <strong style={{ color: T.mint }}>XGBoost + LightGBM + CatBoost</strong> ensemble → daily{" "}
+              <strong style={{ color: T.mint }}>BUY / HOLD signal</strong> with full SHAP explainability.
+              Two risk profiles — <strong style={{ color: T.mint }}>QUANT</strong> (aggressive) and{" "}
+              <strong style={{ color: T.mint }}>MACRO</strong> (conservative) — run in parallel.
+            </p>
+            <div style={s.btnRow}>
+              <button style={s.btnPrimary} onClick={() => goTo("/dashboard")}
+                onMouseOver={e => { e.currentTarget.style.opacity = "0.88"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseOut={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                Explore Platform
+              </button>
+              <button style={s.btnSecondary} onClick={() => goTo("/dashboard")}
+                onMouseOver={e => e.currentTarget.style.borderColor = "rgba(134,239,172,0.5)"}
+                onMouseOut={e => e.currentTarget.style.borderColor = "rgba(134,239,172,0.2)"}>
+                View Analytics
+              </button>
+            </div>
+          </div>
+
+          {/* Pipeline */}
+          <div style={{ marginTop: 20 }}>
+            <div style={s.colLabel}>Signal Pipeline</div>
+            <div style={s.pipeline}>
+              {PIPELINE.map((p, i) => (
+                <div key={i} style={{ ...s.pipeStep, borderRight: i < PIPELINE.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                  <div style={{ fontSize: 12, color: T.green, marginBottom: 3 }}>{p.icon}</div>
+                  <div style={{ fontSize: 8, fontWeight: 700, color: T.pale, fontFamily: T.mono }}>{p.label}</div>
+                  <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, marginTop: 1 }}>{p.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Chart + signal cards */}
-        <div className="chart-float" style={{ marginTop:60, display:"flex", gap:16,
-          flexWrap:"wrap", justifyContent:"center", alignItems:"flex-end" }}>
-          <div style={{ background:C.card, border:`1px solid ${C.border}`,
-            borderRadius:6, padding:"20px 22px", minWidth:290 }}>
-            <div style={{ fontSize:10, color:C.textFaint, letterSpacing:"1.5px",
-              marginBottom:10, fontFamily:"'Segoe UI',sans-serif", textTransform:"uppercase" }}>
-              NSEI · Candlestick View
+        {/* RIGHT */}
+        <div style={s.heroRight}>
+          {/* Signal card */}
+          <div style={s.signalCard}>
+            <div style={{ fontSize: 8, color: T.textFaint, letterSpacing: "2px", textTransform: "uppercase", fontFamily: T.mono, marginBottom: 10 }}>
+              Today's ML Signal · NSEI
             </div>
-            <CandleChart/>
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {[
-              { label:"SIGNAL",     value:null, signal: "BUY" },
-              { label:"CONFIDENCE", value:"91.4%" },
-              { label:"TOP DRIVER", value:"RSI Divergence" },
-            ].map((item,i)=>(
-              <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`,
-                borderRadius:4, padding:"12px 18px", minWidth:170 }}>
-                <div style={{ fontSize:9.5, color:C.textFaint, letterSpacing:"1px",
-                  marginBottom:6, textTransform:"uppercase", fontFamily:"'Segoe UI',sans-serif" }}>
-                  {item.label}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div style={{ fontSize: 24, fontWeight: 900, color: sigColor, fontFamily: T.mono, letterSpacing: "-1px", display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: sigColor, animation: "pulse 2s infinite" }} />
+                {signal?.signal ?? "—"}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: T.mint, fontFamily: T.mono }}>{signal?.confidence ?? "—"}%</div>
+                <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, letterSpacing: "1px" }}>CONFIDENCE</div>
+              </div>
+            </div>
+            {/* Confidence bars */}
+            <div style={{ display: "flex", gap: 2, marginBottom: 10 }}>
+              {[...Array(10)].map((_, i) => (
+                <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i < confBars ? sigColor : "rgba(34,197,94,0.1)" }} />
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {[
+                { label: "Top Driver",    val: signal ? "RSI Divergence" : "—",  color: T.mint  },
+                { label: "NSEI Close",    val: signal?.close ? `₹${signal.close.toLocaleString("en-IN")}` : "—", color: T.text },
+                { label: "Strategy Rtn",  val: stats ? `+${stats.total_return}%` : "—", color: T.green },
+                { label: "Win Rate",      val: stats ? `${stats.win_rate}%` : "—", color: T.mint  },
+              ].map(({ label, val, color }) => (
+                <div key={label} style={{ background: "rgba(0,0,0,0.2)", borderRadius: 4, padding: "6px 8px" }}>
+                  <div style={{ fontSize: 7, color: T.textFaint, letterSpacing: "1px", textTransform: "uppercase", fontFamily: T.mono, marginBottom: 2 }}>{label}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, fontFamily: T.mono, color }}>{val}</div>
                 </div>
-                {item.signal
-                  ? <span style={S.signalBuy}>● {item.signal}</span>
-                  : <div style={{ fontSize:15, fontWeight:600, color:C.highlight,
-                      fontFamily:"'Segoe UI',sans-serif" }}>{item.value}</div>
-                }
+              ))}
+            </div>
+          </div>
+
+          {/* QUANT vs MACRO mini */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {[
+              { name: "QUANT", ret: "+848%", alpha: "+681%", color: T.green, border: T.green, sub: "vs NSEI +167%" },
+              { name: "MACRO", ret: "+251%", alpha: "+84%",  color: T.blue,  border: T.blue,  sub: "alpha +83.72%" },
+            ].map(c => (
+              <div key={c.name} style={{
+                background: "rgba(13,26,19,0.7)",
+                border: `1px solid rgba(${c.color === T.green ? "34,197,94" : "96,165,250"},0.12)`,
+                borderTop: `2px solid ${c.border}`,
+                borderRadius: 5, padding: "8px 10px",
+              }}>
+                <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, letterSpacing: "1px", marginBottom: 3 }}>{c.name} RETURN</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: c.color, fontFamily: T.mono, letterSpacing: "-1px" }}>{c.ret}</div>
+                <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, marginTop: 2 }}>{c.sub}</div>
               </div>
             ))}
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* STATS */}
-      <div style={{...S.statsStrip, zIndex:1, position:"relative"}}>
-        {STATS.map((s,i)=>(
-          <div key={i} style={{...S.statCard, borderRight: i===STATS.length-1?"none":`1px solid ${C.border}`}}>
-            <div style={S.statNum}>{s.num}</div>
-            <div style={S.statLabel}>{s.label}</div>
+      {/* BOTTOM 3-COL */}
+      <div style={s.bottom}>
+        {/* COL 1: Dual clients */}
+        <div style={s.col}>
+          <div style={s.colLabel}>Dual Client Engine</div>
+          <div style={s.clients}>
+            {[
+              { name: "QUANT", style: "Aggressive", color: T.green, threshold: "≥55%", position: "95%", stop: "3%", ret: "+848%", alpha: "+681%" },
+              { name: "MACRO", style: "Conservative", color: T.blue,  threshold: "≥65%", position: "60%", stop: "1.5%", ret: "+251%", alpha: "+84%" },
+            ].map((c, ci) => (
+              <div key={c.name}>
+                {ci === 1 && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "rgba(231,240,234,0.1)", fontFamily: T.mono }}>VS</div>
+                )}
+                <div style={s.clientCard(c.color)}>
+                  <div style={{ fontSize: 10, fontWeight: 800, fontFamily: T.mono, letterSpacing: "1.5px", color: c.color }}>{c.name}</div>
+                  <div style={{ fontSize: 6.5, color: T.textFaint, letterSpacing: "1px", textTransform: "uppercase", fontFamily: T.mono, marginBottom: 5 }}>{c.style}</div>
+                  {[
+                    ["Threshold", c.threshold, c.color],
+                    ["Position", c.position, T.text],
+                    ["Stop loss", c.stop, T.red],
+                    ["Return", c.ret, T.green],
+                    ["Alpha", c.alpha, T.green],
+                  ].map(([label, val, color]) => (
+                    <div key={label} style={{ ...s.cstat, borderBottom: label === "Alpha" ? "none" : `1px solid rgba(34,197,94,0.06)` }}>
+                      <span style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono }}>{label}</span>
+                      <span style={{ fontSize: 8, fontWeight: 700, fontFamily: T.mono, color }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )).reduce((acc, el, i) => i === 1 ? [...acc, <div key="vs" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "rgba(231,240,234,0.1)", fontFamily: T.mono }}>VS</div>, el] : [...acc, el], [])}
           </div>
-        ))}
-      </div>
-
-      {/* MARQUEES */}
-      <div style={{ position:"relative", zIndex:1, padding:"20px 0",
-        borderBottom:`1px solid ${C.border}`, background: C.surface }}>
-        <Marquee items={MARQUEE1} reverse={false}/>
-        <div style={{ height:8 }}/>
-        <Marquee items={MARQUEE2} reverse={true}/>
-      </div>
-
-      {/* FEATURES */}
-      <section style={{...S.section, zIndex:1, position:"relative"}}>
-        <div style={S.sectionLabel}>Platform Capabilities</div>
-        <h2 style={S.sectionTitle}>Eight Modules.<br/>One Intelligence Layer.</h2>
-        <p style={S.sectionSub}>
-          End-to-end quantitative infrastructure — from raw market data to risk-managed,
-          explainable trading signals.
-        </p>
-        <div style={S.featureGrid}>
-          {FEATURES.map((f,i)=>(
-            <div key={i} style={S.featureCard(hovCard===i)}
-              onMouseEnter={()=>setHovCard(i)} onMouseLeave={()=>setHovCard(null)}>
-              <div style={{...S.featureIcon, color: C.primary}}>{f.icon}</div>
-              <div style={S.featureTitle}>{f.title}</div>
-              <div style={S.featureDesc}>{f.desc}</div>
-              <div style={S.featureTag}>{f.tag}</div>
-            </div>
-          ))}
         </div>
-      </section>
 
-      {/* ARCHITECTURE */}
-      <section style={{...S.section, zIndex:1, position:"relative",
-        background: C.surface, borderTop:`1px solid ${C.border}`}}>
-        <div style={S.sectionLabel}>System Architecture</div>
-        <h2 style={S.sectionTitle}>From Raw Data<br/>to Actionable Signal</h2>
-        <p style={S.sectionSub}>
-          A seven-stage quantitative pipeline transforms raw NSEI market data
-          into explainable, risk-managed trading decisions.
-        </p>
-        <div style={S.archWrap}>
-          {ARCH.map((a,i)=>(
-            <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", width:"100%" }}>
-              {i>0 && <div style={S.archConnector}/>}
-              <div style={S.archNode(i)}>
-                <div style={S.archNum}>{i+1}</div>
-                <div>
-                  <div style={S.archLabel}>{a.label}</div>
-                  <div style={S.archSub}>{a.sub}</div>
+        {/* COL 2: Modules */}
+        <div style={s.col}>
+          <div style={s.colLabel}>Platform Modules</div>
+          <div style={s.modGrid}>
+            {MODULES.map((m, i) => (
+              <div key={i}
+                style={s.mod(hovMod === i)}
+                onMouseEnter={() => setHovMod(i)}
+                onMouseLeave={() => setHovMod(null)}
+                onClick={() => goTo(m.path)}
+              >
+                <div style={{ fontSize: 11, color: T.green, marginBottom: 3 }}>{m.icon}</div>
+                <div style={{ fontSize: 7, fontWeight: 600, color: hovMod === i ? T.pale : T.textDim, fontFamily: T.mono, lineHeight: 1.2 }}>{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* COL 3: Psychology */}
+        <div style={s.colLast}>
+          <div style={s.colLabel}>Psychology Engine</div>
+          <div style={s.psychCard}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: T.purple, fontFamily: T.mono, letterSpacing: "0.5px" }}>◎ PSYCHOLOGY MONITOR</div>
+                <div style={{ fontSize: 7.5, color: T.textFaint, fontFamily: T.mono, marginTop: 3, lineHeight: 1.5 }}>
+                  Detects revenge trading,<br/>loss aversion & recency bias
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, letterSpacing: "1px" }}>HEALTH</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: T.green, fontFamily: T.mono }}>
+                  82<span style={{ fontSize: 11, opacity: 0.4 }}>/100</span>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ANALYTICS */}
-      <section style={{...S.section, zIndex:1, position:"relative"}}>
-        <div style={S.sectionLabel}>Live Analytics</div>
-        <h2 style={S.sectionTitle}>Dashboard Snapshot</h2>
-        <p style={S.sectionSub}>Real-time portfolio, risk, and signal analytics in one view.</p>
-        <div style={S.analyticsGrid}>
-          {[
-            { label:"PORTFOLIO GROWTH",    content: <MiniBar color="#22C55E"/> },
-            { label:"PnL TODAY",           content: <div style={{fontSize:26,fontWeight:700,color:"#22C55E",marginTop:8,fontFamily:"'Segoe UI',sans-serif"}}>+₹ 24,810</div> },
-            { label:"SIGNAL ACCURACY",     content: <div style={{fontSize:26,fontWeight:700,color:C.accent,marginTop:8,fontFamily:"'Segoe UI',sans-serif"}}>91.4%</div> },
-            { label:"ACTIVE SIGNAL",       content: <div style={{marginTop:8}}><span style={S.signalBuy}>● BUY</span><div style={{fontSize:10.5,color:C.textFaint,marginTop:8,fontFamily:"'Segoe UI',sans-serif"}}>NSEI · Conf. 91.4%</div></div> },
-            { label:"MAX DRAWDOWN",        content: <div style={{fontSize:26,fontWeight:700,color:C.danger,marginTop:8,fontFamily:"'Segoe UI',sans-serif"}}>-7.2%</div> },
-            { label:"RISK EXPOSURE",       content: <MiniBar color="#86EFAC"/> },
-          ].map((card,i)=>(
-            <div key={i} style={S.analyticsCard}>
-              <div style={S.analyticsLabel}>{card.label}</div>
-              {card.content}
+            {/* Bar */}
+            <div style={{ height: 3, background: "rgba(34,197,94,0.1)", borderRadius: 2, marginBottom: 8 }}>
+              <div style={{ height: "100%", width: "82%", background: T.green, borderRadius: 2 }} />
             </div>
-          ))}
+            {[
+              { dot: T.green,  text: "HEALTHY — Trading well. Continue normally." },
+              { dot: T.amber,  text: "Win rate 56.2% last 5 trades — in range"   },
+              { dot: T.green,  text: "No consecutive losses detected"             },
+            ].map((a, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 8, color: "rgba(231,240,234,0.38)", fontFamily: T.mono, marginBottom: 4 }}>
+                <div style={{ width: 4, height: 4, borderRadius: "50%", background: a.dot, flexShrink: 0 }} />
+                {a.text}
+              </div>
+            ))}
+          </div>
         </div>
-      </section>
-
-      {/* CTA */}
-      <section style={{...S.ctaSection, zIndex:1, position:"relative"}}>
-        <div style={S.sectionLabel}>Get Started</div>
-        <h2 style={{...S.sectionTitle, maxWidth:540, margin:"0 auto 16px"}}>
-          Transform Market Data into<br/>Intelligent Decisions
-        </h2>
-        <p style={{...S.sectionSub, margin:"0 auto 40px"}}>
-          Deploy institutional-grade AI on NSEI markets.<br/>
-          Backtest. Explain. Manage risk. Repeat.
-        </p>
-        <div style={S.heroButtons}>
-          <button style={S.btnPrimary}>Explore Platform</button>
-          <button style={S.btnSecondary}>View Analytics</button>
-        </div>
-      </section>
+      </div>
 
       {/* FOOTER */}
-      <footer style={{...S.footer, zIndex:1, position:"relative"}}>
-        <div>
-          <div style={{...S.logo, fontSize:14, marginBottom:10}}>AlgoTerminal</div>
-          <div style={{fontSize:12.5, color:C.textFaint, lineHeight:1.8, fontFamily:"'Segoe UI',sans-serif", maxWidth:200}}>
-            AI-powered quantitative trading intelligence for NSEI markets.
+      <div style={s.footer}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ fontSize: 8, color: "rgba(231,240,234,0.18)", fontFamily: T.mono, letterSpacing: "1.5px" }}>
+            © 2025 ALGOTERMINAL · BUILT BY BHANU
           </div>
+          <div style={s.footerTag}>NSEI QUANTITATIVE INTELLIGENCE</div>
         </div>
-        {[
-          { title:"Platform",  links:["Dashboard","Signal Engine","Backtesting","Risk Module"] },
-          { title:"Analytics", links:["Portfolio","Drawdown","Heatmaps","Indicators"] },
-          { title:"Research",  links:["Quant Simulator","Macro Simulator","Explainer","Screener"] },
-        ].map(col=>(
-          <div key={col.title}>
-            <div style={S.footerTitle}>{col.title}</div>
-            {col.links.map(l=><span key={l} style={S.footerLink}>{l}</span>)}
-          </div>
-        ))}
-      </footer>
-      <div style={S.footerCopy}>
-        © 2025 AlgoTerminal · Built by Bhanu · NSEI Quantitative Intelligence Platform
+        <div style={{ display: "flex", gap: 6 }}>
+          {["VERCEL FRONTEND", "RENDER BACKEND", "LIVE API"].map(t => (
+            <div key={t} style={s.footerTag}>{t}</div>
+          ))}
+        </div>
       </div>
     </div>
   );

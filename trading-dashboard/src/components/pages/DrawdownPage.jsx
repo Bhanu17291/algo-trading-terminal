@@ -1,141 +1,168 @@
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, LineChart, Line, Legend, BarChart, Bar, Cell } from "recharts"
-import Panel from "../shared/Panel"
-import Metric from "../shared/Metric"
-import ChartTooltip from "../shared/ChartTooltip"
-import BackButton from "../layout/BackButton"
+import { XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
+import { T } from "../../config/tokens";
 
-const mono = "'Courier New', monospace"
+const mono = T.fontMono;
 
-function calcDrawdown(portfolioArr) {
-  let peak = 0
-  return (portfolioArr || []).map(row => {
-    if (row.value > peak) peak = row.value
-    const dd = peak > 0 ? ((row.value - peak) / peak) * 100 : 0
-    return { date: row.date?.slice(2, 7), drawdown: parseFloat(dd.toFixed(2)), value: row.value }
-  })
+function calcDrawdown(arr) {
+  let peak = 0;
+  return (arr || []).map(row => {
+    const val = Number(row.value) || 0;
+    if (val > peak) peak = val;
+    const dd = peak > 0 ? parseFloat(((val - peak) / peak * 100).toFixed(2)) : 0;
+    return { date: row.date?.slice(5, 10), drawdown: dd };
+  });
 }
 
-export default function DrawdownPage({ portfolio, trades, compare, onBack }) {
-  const strategyDD = calcDrawdown(portfolio)
-  const quantDD    = calcDrawdown(compare?.quant_portfolio)
-  const macroDD    = calcDrawdown(compare?.macro_portfolio)
+function safeMin(arr) {
+  const vals = (arr || []).map(d => d.drawdown).filter(v => isFinite(v));
+  return vals.length ? Math.min(...vals) : 0;
+}
 
-  const combinedDD = strategyDD.map((row, i) => ({
-    date:     row.date,
-    STRATEGY: row.drawdown,
-    QUANT:    quantDD[i]?.drawdown ?? null,
-    MACRO:    macroDD[i]?.drawdown ?? null,
-  })).filter((_, i) => i % 3 === 0)
+function safeWorstLoss(trades) {
+  const losses = (trades || []).filter(t => t.action === "SELL").map(t => Number(t.pnl)).filter(v => isFinite(v) && v < 0);
+  return losses.length ? Math.min(...losses) : 0;
+}
 
-  const minStrategy = Math.min(...strategyDD.map(d => d.drawdown))
-  const minQuant    = Math.min(...quantDD.map(d => d.drawdown))
-  const minMacro    = Math.min(...macroDD.map(d => d.drawdown))
+function Tile({ label, value, color, sub }) {
+  return (
+    <div style={{
+      background: T.surface, border: `1px solid ${T.border}`,
+      borderTop: `2px solid ${color}`, borderRadius: T.rLg, padding: "12px 16px",
+      display: "flex", flexDirection: "column", gap: 6,
+    }}>
+      <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase" }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color, fontFamily: mono, letterSpacing: "-0.5px" }}>{value ?? "—"}</div>
+      {sub && <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono }}>{sub}</div>}
+    </div>
+  );
+}
 
-  const sells      = trades?.filter(t => t.action === "SELL" && t.pnl < 0) || []
-  const quantSells = (compare?.quant_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
-  const macroSells = (compare?.macro_trades || []).filter(t => t.action === "SELL" && t.pnl < 0)
+export default function DrawdownPage({ portfolio, trades, compare }) {
+  const stratDD = calcDrawdown(portfolio);
+  const quantDD = calcDrawdown(compare?.quant_portfolio);
+  const macroDD = calcDrawdown(compare?.macro_portfolio);
 
-  const summaryRows = [
-    ["MAX DRAWDOWN",   `${minStrategy.toFixed(2)}%`, `${minQuant.toFixed(2)}%`,    `${minMacro.toFixed(2)}%`,    "#ff3131"],
-    ["LOSING TRADES",  sells.length,                  quantSells.length,             macroSells.length,            "#cc44ff"],
-    ["WORST LOSS",     `₹${sells.length    ? Math.min(...sells.map(t => t.pnl)).toLocaleString()      : 0}`,
-                       `₹${quantSells.length ? Math.min(...quantSells.map(t => t.pnl)).toLocaleString() : 0}`,
-                       `₹${macroSells.length ? Math.min(...macroSells.map(t => t.pnl)).toLocaleString() : 0}`, "#ff3131"],
-  ]
+  const minS = safeMin(stratDD);
+  const minQ = safeMin(quantDD);
+  const minM = safeMin(macroDD);
+
+  const sells  = (trades || []).filter(t => t.action === "SELL" && Number(t.pnl) < 0);
+  const qSells = (compare?.quant_trades || []).filter(t => t.action === "SELL" && Number(t.pnl) < 0);
+  const mSells = (compare?.macro_trades || []).filter(t => t.action === "SELL" && Number(t.pnl) < 0);
+
+  const fmt = v => isFinite(v) && v !== 0 ? `₹${Math.abs(Number(v)).toLocaleString("en-IN")}` : "₹0";
+
+  // Combine & thin data
+  const combined = stratDD.map((r, i) => ({
+    date: r.date, STRATEGY: r.drawdown,
+    QUANT: quantDD[i]?.drawdown ?? null,
+    MACRO: macroDD[i]?.drawdown ?? null,
+  })).filter((_, i) => i % 4 === 0);
+
+  const tableRows = [
+    { label: "Max Drawdown",  s: `${minS.toFixed(2)}%`, q: `${minQ.toFixed(2)}%`, m: `${minM.toFixed(2)}%`, color: T.red },
+    { label: "Losing Trades", s: sells.length,           q: qSells.length,         m: mSells.length,          color: T.purple },
+    { label: "Worst Loss",    s: fmt(safeWorstLoss(sells)), q: fmt(safeWorstLoss(qSells)), m: fmt(safeWorstLoss(mSells)), color: T.red },
+    { label: "Avg Loss",
+      s: sells.length ? fmt(sells.reduce((a,t)=>a+Number(t.pnl),0)/sells.length) : "₹0",
+      q: qSells.length ? fmt(qSells.reduce((a,t)=>a+Number(t.pnl),0)/qSells.length) : "₹0",
+      m: mSells.length ? fmt(mSells.reduce((a,t)=>a+Number(t.pnl),0)/mSells.length) : "₹0",
+      color: T.amber },
+  ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", minHeight: 0 }}>
 
-      <BackButton onBack={onBack} />
+      {/* Header */}
+      <div>
+        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Risk Analysis</div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Drawdown</h1>
+      </div>
 
-      {/* Summary stat cards */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          ["STRATEGY MAX DD", `${minStrategy.toFixed(2)}%`, "#ff3131"],
-          ["QUANT MAX DD",    `${minQuant.toFixed(2)}%`,    "#ff6600"],
-          ["MACRO MAX DD",    `${minMacro.toFixed(2)}%`,    "#00aaff"],
-        ].map(([l, v, c]) => (
-          <div key={l} className="stat bg-base-200 rounded-box border border-base-300"
-            style={{ borderTop: `2px solid ${c}` }}>
-            <div className="stat-title" style={{ fontFamily: mono, fontSize: 10 }}>{l}</div>
-            <div className="stat-value" style={{ color: c, fontFamily: mono, fontSize: 26 }}>{v}</div>
+      {/* 6 stat tiles */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 }}>
+        <Tile label="Strategy Max DD" value={`${minS.toFixed(2)}%`} color={T.red} />
+        <Tile label="QUANT Max DD"    value={`${minQ.toFixed(2)}%`} color={T.amber} />
+        <Tile label="MACRO Max DD"    value={`${minM.toFixed(2)}%`} color={T.blue} />
+        <Tile label="Strategy Losses" value={sells.length}           color={T.red} />
+        <Tile label="QUANT Losses"    value={qSells.length}          color={T.amber} />
+        <Tile label="MACRO Losses"    value={mSells.length}          color={T.blue} />
+      </div>
+
+      {/* Main content: chart left, table right */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr", gap: 12, flex: 1, minHeight: 0 }}>
+
+        {/* Chart */}
+        <div style={{
+          background: T.surface, border: `1px solid ${T.border}`,
+          borderTop: `2px solid ${T.red}`, borderRadius: T.rLg, padding: "14px 16px",
+          display: "flex", flexDirection: "column",
+        }}>
+          <div style={{ fontSize: 10, color: T.red, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>
+            Drawdown Comparison
           </div>
-        ))}
+          <div style={{ fontSize: 10, color: T.textFaint, fontFamily: mono, marginBottom: 10 }}>
+            % decline from all-time peak · red line = -5% danger zone
+          </div>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={combined}>
+                <XAxis dataKey="date" tick={{ fontSize: 9, fill: T.textFaint, fontFamily: mono }} />
+                <YAxis tick={{ fontSize: 9, fill: T.textFaint, fontFamily: mono }} tickFormatter={v => `${v}%`} width={36} />
+                <Tooltip formatter={(v, n) => [`${v}%`, n]} labelStyle={{ fontFamily: mono, fontSize: 10 }} contentStyle={{ background: T.surface, border: `1px solid ${T.border}`, fontFamily: mono, fontSize: 10 }} />
+                <ReferenceLine y={0}  stroke={T.border} strokeDasharray="4 4" />
+                <ReferenceLine y={-5} stroke={T.red} strokeDasharray="2 2" label={{ value: "-5% DANGER", fill: T.red, fontSize: 9 }} />
+                <Legend wrapperStyle={{ fontFamily: mono, fontSize: 10 }} />
+                <Line type="monotone" dataKey="STRATEGY" stroke={T.red}   strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="QUANT"    stroke={T.amber} strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="MACRO"    stroke={T.blue}  strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Analysis table */}
+        <div style={{
+          background: T.surface, border: `1px solid ${T.border}`,
+          borderTop: `2px solid ${T.purple}`, borderRadius: T.rLg, padding: "14px 16px",
+          display: "flex", flexDirection: "column", gap: 10,
+        }}>
+          <div style={{ fontSize: 10, color: T.purple, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>Analysis</div>
+
+          {/* Column headers */}
+          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: 4, padding: "6px 0", borderBottom: `1px solid ${T.border}` }}>
+            {[["Metric", T.textFaint], ["Strategy", T.red], ["QUANT", T.amber], ["MACRO", T.blue]].map(([h, c]) => (
+              <div key={h} style={{ fontSize: 8, color: c, fontFamily: mono, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase" }}>{h}</div>
+            ))}
+          </div>
+
+          {tableRows.map(({ label, s, q, m, color }) => (
+            <div key={label} style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: 4, padding: "8px 0", borderBottom: `1px solid ${T.border}` }}>
+              <div style={{ fontSize: 10, color: T.textDim, fontFamily: mono }}>{label}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color, fontFamily: mono }}>{s}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color, fontFamily: mono }}>{q}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color, fontFamily: mono }}>{m}</div>
+            </div>
+          ))}
+
+          {/* Risk levels */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 8 }}>Risk Levels</div>
+            {[
+              { label: "Safe",    range: "0% to -2%",   color: T.green },
+              { label: "Caution", range: "-2% to -5%",  color: T.amber },
+              { label: "Danger",  range: "-5% to -10%", color: T.red },
+              { label: "Critical",range: "Below -10%",  color: "#dc2626" },
+            ].map(({ label, range, color }) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 8px", marginBottom: 4, background: "rgba(0,0,0,0.2)", border: `1px solid ${T.border}`, borderLeft: `2px solid ${color}`, borderRadius: T.r }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color, fontFamily: mono }}>{label}</span>
+                <span style={{ fontSize: 10, color: T.textFaint, fontFamily: mono }}>{range}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Combined drawdown chart */}
-      <Panel title="DRAWDOWN COMPARISON — STRATEGY vs QUANT vs MACRO" accent="#ff3131">
-        <div style={{ fontSize: 11, color: "#666", fontFamily: mono, marginBottom: 10 }}>
-          All three shown as % decline from their respective all-time peaks
-        </div>
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={combinedDD}>
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} />
-            <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `${v}%`} />
-            <Tooltip content={<ChartTooltip />} />
-            <ReferenceLine y={0}  stroke="#333" strokeDasharray="4 4" />
-            <ReferenceLine y={-5} stroke="#ff3131" strokeDasharray="2 2"
-              label={{ value: "-5% DANGER", fill: "#ff3131", fontSize: 9 }} />
-            <Legend wrapperStyle={{ fontFamily: mono, fontSize: 11 }} />
-            <Line type="monotone" dataKey="STRATEGY" stroke="#ff3131" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="QUANT"    stroke="#ff6600" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="MACRO"    stroke="#00aaff" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </Panel>
-
-      {/* Comparison table */}
-      <Panel title="DRAWDOWN ANALYSIS — SIDE BY SIDE" accent="#ff3131">
-        <div className="overflow-x-auto">
-          <table className="table table-sm" style={{ fontFamily: mono }}>
-            <thead>
-              <tr style={{ fontSize: 11, letterSpacing: 1 }}>
-                <th style={{ color: "#666" }}>METRIC</th>
-                <th style={{ color: "#ff3131" }}>STRATEGY</th>
-                <th style={{ color: "#ff6600" }}>QUANT</th>
-                <th style={{ color: "#00aaff" }}>MACRO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summaryRows.map(([label, s, q, m, c]) => (
-                <tr key={label} className="hover">
-                  <td style={{ color: "#666", fontSize: 12 }}>{label}</td>
-                  <td style={{ color: c, fontWeight: 700, fontSize: 12 }}>{s}</td>
-                  <td style={{ color: c, fontWeight: 700, fontSize: 12 }}>{q}</td>
-                  <td style={{ color: c, fontWeight: 700, fontSize: 12 }}>{m}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-
-      {/* Individual losing trade bars */}
-      <div className="grid grid-cols-2 gap-3">
-        <Panel title="QUANT — LOSING TRADES" accent="#ff6600">
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={quantSells.map((t, i) => ({ trade: i + 1, loss: t.pnl }))}>
-              <XAxis dataKey="trade" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} />
-              <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `₹${(v / 1000).toFixed(1)}k`} />
-              <Tooltip content={<ChartTooltip />} />
-              <ReferenceLine y={0} stroke="#444" />
-              <Bar dataKey="loss" name="Loss" fill="#ff6600" fillOpacity={0.8} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Panel>
-
-        <Panel title="MACRO — LOSING TRADES" accent="#00aaff">
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={macroSells.map((t, i) => ({ trade: i + 1, loss: t.pnl }))}>
-              <XAxis dataKey="trade" tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} />
-              <YAxis tick={{ fontSize: 10, fill: "#666", fontFamily: mono }} tickFormatter={v => `₹${(v / 1000).toFixed(1)}k`} />
-              <Tooltip content={<ChartTooltip />} />
-              <ReferenceLine y={0} stroke="#444" />
-              <Bar dataKey="loss" name="Loss" fill="#00aaff" fillOpacity={0.8} />
-            </BarChart>
-          </ResponsiveContainer>
-        </Panel>
-      </div>
     </div>
-  )
+  );
 }

@@ -1,188 +1,178 @@
-import { useState, useEffect } from "react"
-import LandingPage from "./components/pages/LandingPage"
-import TopBar from "./components/layout/TopBar"
-import Sidebar from "./components/layout/Sidebar"
-import Dashboard from "./components/pages/Dashboard"
-import TradePage from "./components/pages/TradePage"
-import IndicatorsPage from "./components/pages/IndicatorsPage"
-import PsychPage from "./components/pages/PsychPage"
-import MarketPage from "./components/pages/MarketPage"
-import ExplainerPage from "./components/pages/ExplainerPage"
-import DrawdownPage from "./components/pages/DrawdownPage"
-import BacktestPage from "./components/pages/BacktestPage"
-import SimulatorPage from "./components/pages/SimulatorPage"
-import RiskPage from "./components/pages/RiskPage"
-import HeatmapPage from "./components/pages/HeatmapPage"
-import ScreenerPage from "./components/pages/ScreenerPage"
-import NewsPage from "./components/pages/NewsPage"
-import ClientsPage from "./components/pages/ClientsPage"
+/**
+ * src/App.jsx
+ *
+ * Changes vs original:
+ *  1. useBackendWake() — gates ALL data fetching behind a health-check ping
+ *  2. WakeScreen — shown while backend cold-starts, with progress + retry
+ *  3. fetchWithRetry — 3-attempt retry with 2 s delay for every API call
+ */
 
-const API = "https://algo-trading-terminal.onrender.com"
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import PageLayout from "./components/shared/PageLayout";
+import WakeScreen from "./components/shared/WakeScreen";
+import { useBackendWake } from "./hooks/useBackendWake";
 
-// Maps landing card ID → first page to open
-const CARD_PAGE_MAP = {
-  signal:    "explainer",   // Signal Intelligence → ML Explainer
-  portfolio: "dashboard",   // Portfolio Engine    → Dashboard
-  clients:   "clients",     // Dual Client Engine  → Clients
-  ml:        "explainer",   // ML Intelligence     → ML Explainer
-  risk:      "risk",        // Risk & Backtest     → Risk Calc
+// Pages
+import LandingPage    from "./components/pages/LandingPage";
+import Dashboard      from "./components/pages/Dashboard";
+import TradePage      from "./components/pages/TradePage";
+import IndicatorsPage from "./components/pages/IndicatorsPage";
+import PsychPage      from "./components/pages/PsychPage";
+import MarketPage     from "./components/pages/MarketPage";
+import ExplainerPage  from "./components/pages/ExplainerPage";
+import DrawdownPage   from "./components/pages/DrawdownPage";
+import BacktestPage   from "./components/pages/BacktestPage";
+import SimulatorPage  from "./components/pages/SimulatorPage";
+import RiskPage       from "./components/pages/RiskPage";
+import HeatmapPage    from "./components/pages/HeatmapPage";
+import ScreenerPage   from "./components/pages/ScreenerPage";
+import NewsPage       from "./components/pages/NewsPage";
+import ClientsPage    from "./components/pages/ClientsPage";
+
+const API = "https://algo-trading-terminal.onrender.com";
+
+/** Fetch with up to `retries` attempts, 2 s delay between each. */
+async function fetchWithRetry(url, retries = 3, delayMs = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) return res.json();
+    } catch {
+      // swallow — retry below
+    }
+    if (i < retries - 1) await new Promise(r => setTimeout(r, delayMs));
+  }
+  return null; // graceful null on all failures
 }
 
-// Maps landing card ID → which section the sidebar should show
-const CARD_SECTION_MAP = {
-  signal:    "signal",
-  portfolio: "portfolio",
-  clients:   "clients",
-  ml:        "ml",
-  risk:      "risk",
-}
+// ─── AppWrapper ────────────────────────────────────────────────────────────────
+// Gated behind <WakeGate> so it only mounts once the backend is confirmed alive.
+// That means every fetch here hits a warm server — no more infinite pending.
 
-export default function App() {
-  const [showLanding, setShowLanding] = useState(true)
-  const [page, setPage]               = useState("dashboard")
-  const [section, setSection]         = useState("portfolio") // tracks which landing card was clicked
-  const [time, setTime]               = useState("")
-  const [signal, setSignal]           = useState(null)
-  const [stats, setStats]             = useState(null)
-  const [pnl, setPnl]                 = useState(null)
-  const [portfolio, setPortfolio]     = useState([])
-  const [psych, setPsych]             = useState(null)
-  const [indicators, setIndicators]   = useState([])
-  const [trades, setTrades]           = useState([])
-  const [shap, setShap]               = useState(null)
-  const [compare, setCompare]         = useState(null)
-  const [loading, setLoading]         = useState(true)
+function AppWrapper({ Component }) {
+  const navigate = useNavigate();
 
-  // Expose setPage globally for legacy usage
-  useEffect(() => { window.__setPage = setPage }, [setPage])
+  const [signal,     setSignal]     = useState(null);
+  const [stats,      setStats]      = useState(null);
+  const [pnl,        setPnl]        = useState(null);
+  const [portfolio,  setPortfolio]  = useState([]);
+  const [psych,      setPsych]      = useState(null);
+  const [indicators, setIndicators] = useState([]);
+  const [trades,     setTrades]     = useState([]);
+  const [shap,       setShap]       = useState(null);
+  const [compare,    setCompare]    = useState(null);
+  const [loading,    setLoading]    = useState(true);
 
-  // IST clock
-  useEffect(() => {
-    const tick = () => {
-      setTime(new Date().toLocaleTimeString("en-IN", {
-        hour: "2-digit", minute: "2-digit", second: "2-digit",
-        timeZone: "Asia/Kolkata"
-      }) + " IST")
-    }
-    tick()
-    const i = setInterval(tick, 1000)
-    return () => clearInterval(i)
-  }, [])
+  const load = useCallback(async () => {
+    const [sig, st, p, port, psy, ind, tr, sh] = await Promise.all([
+      fetchWithRetry(`${API}/signal`),
+      fetchWithRetry(`${API}/stats`),
+      fetchWithRetry(`${API}/pnl`),
+      fetchWithRetry(`${API}/portfolio`),
+      fetchWithRetry(`${API}/psychology`),
+      fetchWithRetry(`${API}/indicators`),
+      fetchWithRetry(`${API}/trades`),
+      fetchWithRetry(`${API}/shap`),
+    ]);
 
-  const fetchAll = async () => {
-    try {
-      const [sigRes, statsRes, pnlRes, portRes, psychRes, indRes, tradesRes, shapRes] = await Promise.allSettled([
-        fetch(`${API}/signal`).then(r => r.json()),
-        fetch(`${API}/stats`).then(r => r.json()),
-        fetch(`${API}/pnl`).then(r => r.json()),
-        fetch(`${API}/portfolio`).then(r => r.json()),
-        fetch(`${API}/psychology`).then(r => r.json()),
-        fetch(`${API}/indicators`).then(r => r.json()),
-        fetch(`${API}/trades`).then(r => r.json()),
-        fetch(`${API}/shap`).then(r => r.json()),
-      ])
-      if (sigRes.status === "fulfilled")    setSignal(sigRes.value)
-      if (statsRes.status === "fulfilled")  setStats(statsRes.value)
-      if (pnlRes.status === "fulfilled")    setPnl(pnlRes.value)
-      if (portRes.status === "fulfilled")   setPortfolio(portRes.value)
-      if (psychRes.status === "fulfilled")  setPsych(psychRes.value)
-      if (indRes.status === "fulfilled")    setIndicators(indRes.value)
-      if (tradesRes.status === "fulfilled") setTrades(tradesRes.value)
-      if (shapRes.status === "fulfilled")   setShap(shapRes.value)
-    } catch (e) {
-      console.error("Fetch error:", e)
-    } finally {
-      setLoading(false)
-    }
-    try {
-      const compareRes = await fetch(`${API}/clients/compare`).then(r => r.json())
-      setCompare(compareRes)
-    } catch (e) {
-      console.error("Compare fetch error:", e)
-    }
-  }
+    if (sig)  setSignal(sig);
+    if (st)   setStats(st);
+    if (p)    setPnl(p);
+    if (port) setPortfolio(port);
+    if (psy)  setPsych(psy);
+    if (ind)  setIndicators(ind);
+    if (tr)   setTrades(tr);
+    if (sh)   setShap(sh);
+    setLoading(false);
+
+    // non-critical — load after main data
+    const cmp = await fetchWithRetry(`${API}/clients/compare`);
+    if (cmp) setCompare(cmp);
+  }, []);
 
   useEffect(() => {
-    fetchAll()
-    const i = setInterval(fetchAll, 30000)
-    return () => clearInterval(i)
-  }, [])
+    load();
+    const iv = setInterval(load, 30000);
+    return () => clearInterval(iv);
+  }, [load]);
 
-  // Called from LandingPage card clicks & bottom nav
-  const handleEnter = (destination) => {
-    const targetPage    = CARD_PAGE_MAP[destination] || destination
-    const targetSection = CARD_SECTION_MAP[destination] || "portfolio"
-    setPage(targetPage)
-    setSection(targetSection)
-    setShowLanding(false)
-  }
-
-  const goHome = () => setShowLanding(true)
-
-  if (showLanding) {
-    return (
-      <LandingPage
-        onEnter={handleEnter}
-        signal={signal}
-        stats={stats}
-        compare={compare}
-      />
-    )
-  }
-
-  const pageProps = {
+  const props = {
     signal, stats, pnl, portfolio, psych, indicators, trades, shap, compare,
-    onBack: goHome,
-    setPage,
-  }
-
-  const renderPage = () => {
-    if (loading) return (
-      <div className="flex flex-col items-center justify-center flex-1 gap-4" style={{ minHeight: 400 }}>
-        <span className="loading loading-bars loading-lg" style={{ color: "#ff6600" }}></span>
-        <span style={{ fontFamily: "'Courier New', monospace", color: "#666", fontSize: 13 }}>
-          CONNECTING TO ALGO ENGINE...
-        </span>
-      </div>
-    )
-    switch (page) {
-      case "dashboard":  return <Dashboard     {...pageProps} />
-      case "trades":     return <TradePage     {...pageProps} />
-      case "indicators": return <IndicatorsPage {...pageProps} />
-      case "psychology": return <PsychPage     {...pageProps} />
-      case "market":     return <MarketPage    {...pageProps} />
-      case "explainer":  return <ExplainerPage {...pageProps} />
-      case "drawdown":   return <DrawdownPage  {...pageProps} />
-      case "backtest":   return <BacktestPage  {...pageProps} />
-      case "simulator":  return <SimulatorPage {...pageProps} />
-      case "risk":       return <RiskPage      {...pageProps} />
-      case "heatmap":    return <HeatmapPage   {...pageProps} />
-      case "screener":   return <ScreenerPage  {...pageProps} />
-      case "news":       return <NewsPage      {...pageProps} />
-      case "clients":    return <ClientsPage   {...pageProps} />
-      default:           return <Dashboard     {...pageProps} />
-    }
-  }
+    onBack:  () => navigate("/"),
+    setPage: (pg) => navigate(`/${pg}`),
+  };
 
   return (
-    <div data-theme="dark" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#0a0a0a" }}>
-      <TopBar
-        signal={signal}
-        stats={stats}
-        time={time}
-        onLogoClick={goHome}
+    <PageLayout>
+      {loading ? (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "60px 0", color: "rgba(231,240,234,0.4)",
+          fontFamily: "'JetBrains Mono', monospace", fontSize: 12,
+        }}>
+          <div style={{
+            width: 14, height: 14,
+            border: "2px solid #22C55E", borderTopColor: "transparent",
+            borderRadius: "50%", animation: "spin 0.8s linear infinite",
+          }} />
+          Loading data…
+        </div>
+      ) : (
+        <Component {...props} />
+      )}
+    </PageLayout>
+  );
+}
+
+// ─── WakeGate ──────────────────────────────────────────────────────────────────
+// Sits in front of every dashboard route.
+// Shows WakeScreen until the backend responds, then renders children normally.
+
+function WakeGate({ children }) {
+  const { awake, elapsed, failed } = useBackendWake();
+  const [retryKey, setRetryKey] = useState(0);
+
+  if (!awake) {
+    return (
+      <WakeScreen
+        elapsed={elapsed}
+        failed={failed}
+        onRetry={() => setRetryKey(k => k + 1)}  // remount hook to restart ping
       />
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <Sidebar
-          page={page}
-          setPage={setPage}
-          section={section}
-          onHome={goHome}
-        />
-        <main style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-          {renderPage()}
-        </main>
-      </div>
-    </div>
-  )
+    );
+  }
+
+  return children;
+}
+
+// ─── App ───────────────────────────────────────────────────────────────────────
+
+export default function App() {
+  return (
+    <Routes>
+      {/* Landing — no sidebar, no wake gate */}
+      <Route path="/" element={<LandingPage />} />
+
+      {/* All dashboard pages — gated behind WakeGate */}
+      <Route path="/dashboard"  element={<WakeGate><AppWrapper Component={Dashboard} /></WakeGate>} />
+      <Route path="/trades"     element={<WakeGate><AppWrapper Component={TradePage} /></WakeGate>} />
+      <Route path="/indicators" element={<WakeGate><AppWrapper Component={IndicatorsPage} /></WakeGate>} />
+      <Route path="/psychology" element={<WakeGate><AppWrapper Component={PsychPage} /></WakeGate>} />
+      <Route path="/market"     element={<WakeGate><AppWrapper Component={MarketPage} /></WakeGate>} />
+      <Route path="/explainer"  element={<WakeGate><AppWrapper Component={ExplainerPage} /></WakeGate>} />
+      <Route path="/drawdown"   element={<WakeGate><AppWrapper Component={DrawdownPage} /></WakeGate>} />
+      <Route path="/backtest"   element={<WakeGate><AppWrapper Component={BacktestPage} /></WakeGate>} />
+      <Route path="/simulator"  element={<WakeGate><AppWrapper Component={SimulatorPage} /></WakeGate>} />
+      <Route path="/risk"       element={<WakeGate><AppWrapper Component={RiskPage} /></WakeGate>} />
+      <Route path="/heatmap"    element={<WakeGate><AppWrapper Component={HeatmapPage} /></WakeGate>} />
+      <Route path="/screener"   element={<WakeGate><AppWrapper Component={ScreenerPage} /></WakeGate>} />
+      <Route path="/news"       element={<WakeGate><AppWrapper Component={NewsPage} /></WakeGate>} />
+      <Route path="/clients"    element={<WakeGate><AppWrapper Component={ClientsPage} /></WakeGate>} />
+
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }

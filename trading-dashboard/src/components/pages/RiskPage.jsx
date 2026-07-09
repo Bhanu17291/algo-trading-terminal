@@ -1,213 +1,183 @@
-import { useState, useEffect } from "react"
-import Panel from "../shared/Panel"
-import Metric from "../shared/Metric"
-import BackButton from "../layout/BackButton"
+import { useState, useEffect } from "react";
+import { T } from "../../config/tokens";
 
-const mono = "'Courier New', monospace"
+const mono = T.fontMono;
 
-// Static profile templates — entry/stop are illustrative defaults
-const PROFILE_TEMPLATES = {
+function Tile({ label, value, color, sub }) {
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${color}`, borderRadius: T.rLg, padding: "12px 14px" }}>
+      <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color, fontFamily: mono }}>{value ?? "—"}</div>
+      {sub && <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, marginTop: 3 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function Slider({ label, value, setter, min, max, step, color }) {
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+        <span style={{ fontSize: 10, color: T.textDim, fontFamily: mono }}>{label}</span>
+        <span style={{ fontSize: 11, color, fontFamily: mono, fontWeight: 700 }}>{value.toLocaleString("en-IN")}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => setter(Number(e.target.value))}
+        style={{ width: "100%", accentColor: color, height: 3, cursor: "pointer" }} />
+    </div>
+  );
+}
+
+function Row({ label, value, color }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${T.border}` }}>
+      <span style={{ fontSize: 10, color: T.textDim, fontFamily: mono }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color, fontFamily: mono }}>{value}</span>
+    </div>
+  );
+}
+
+const PROFILES = {
   CUSTOM: { capital: 100000, riskPct: 2,   entry: 23000, stop: 22500 },
   QUANT:  { capital: 100000, riskPct: 3,   entry: 23000, stop: 22310 },
   MACRO:  { capital: 100000, riskPct: 1.5, entry: 23000, stop: 22655 },
-}
+};
 
-export default function RiskPage({ stats, trades, compare, onBack }) {
-  const [profile,    setProfile]    = useState("CUSTOM")
-  const [capital,    setCapital]    = useState(100000)
-  const [riskPct,    setRiskPct]    = useState(2)
-  const [entryPrice, setEntryPrice] = useState(23000)
-  const [stopLoss,   setStopLoss]   = useState(22500)
-  const [winRate,    setWinRate]    = useState(50)
-  const [avgWin,     setAvgWin]     = useState(3000)
-  const [avgLoss,    setAvgLoss]    = useState(2000)
-  const [loaded,     setLoaded]     = useState(false)
+export default function RiskPage({ stats, trades, compare }) {
+  const [profile,    setProfile]    = useState("CUSTOM");
+  const [capital,    setCapital]    = useState(100000);
+  const [riskPct,    setRiskPct]    = useState(2);
+  const [entryPrice, setEntryPrice] = useState(23000);
+  const [stopLoss,   setStopLoss]   = useState(22500);
+  const [winRate,    setWinRate]    = useState(50);
+  const [avgWin,     setAvgWin]     = useState(3000);
+  const [avgLoss,    setAvgLoss]    = useState(2000);
 
-  // Seed from live stats on mount
   useEffect(() => {
-    if (!loaded && stats) {
-      setWinRate(stats.win_rate ?? 50)
-      setLoaded(true)
-    }
-  }, [stats, loaded])
+    if (stats) setWinRate(stats.win_rate ?? 50);
+  }, [stats]);
 
-  // Seed avg win/loss from trade history
   useEffect(() => {
-    if (!trades?.length) return
-    const sells = trades.filter(t => t.action === "SELL")
-    const wins  = sells.filter(t => t.pnl > 0)
-    const losses = sells.filter(t => t.pnl < 0)
-    if (wins.length)   setAvgWin(Math.round(wins.reduce((s, t) => s + t.pnl, 0) / wins.length))
-    if (losses.length) setAvgLoss(Math.round(Math.abs(losses.reduce((s, t) => s + t.pnl, 0) / losses.length)))
-  }, [trades])
-
-  // Build PROFILES dynamically using live stats
-  const buildProfiles = () => ({
-    CUSTOM: { ...PROFILE_TEMPLATES.CUSTOM, winRate: 50,                     avgWin: 3000, avgLoss: 2000 },
-    QUANT:  { ...PROFILE_TEMPLATES.QUANT,  winRate: stats?.win_rate ?? 72,  avgWin, avgLoss },
-    MACRO:  { ...PROFILE_TEMPLATES.MACRO,  winRate: compare?.macro_stats?.win_rate ?? 68, avgWin, avgLoss },
-  })
+    if (!trades?.length) return;
+    const sells  = trades.filter(t => t.action === "SELL");
+    const wins   = sells.filter(t => t.pnl > 0);
+    const losses = sells.filter(t => t.pnl < 0);
+    if (wins.length)   setAvgWin(Math.round(wins.reduce((s,t)=>s+t.pnl,0)/wins.length));
+    if (losses.length) setAvgLoss(Math.round(Math.abs(losses.reduce((s,t)=>s+t.pnl,0)/losses.length)));
+  }, [trades]);
 
   const loadProfile = (p) => {
-    setProfile(p)
-    const profiles = buildProfiles()
-    const pr = profiles[p]
-    setCapital(pr.capital); setRiskPct(pr.riskPct)
-    setEntryPrice(pr.entry); setStopLoss(pr.stop)
-    setWinRate(pr.winRate); setAvgWin(pr.avgWin); setAvgLoss(pr.avgLoss)
-  }
+    setProfile(p);
+    const pr = PROFILES[p];
+    setCapital(pr.capital); setRiskPct(pr.riskPct);
+    setEntryPrice(pr.entry); setStopLoss(pr.stop);
+    if (p === "QUANT") setWinRate(stats?.win_rate ?? 72);
+    if (p === "MACRO") setWinRate(compare?.macro_stats?.win_rate ?? 68);
+  };
 
-  const riskAmount    = (capital * riskPct) / 100
-  const priceDiff     = Math.abs(entryPrice - stopLoss)
-  const positionSize  = priceDiff > 0 ? Math.floor(riskAmount / priceDiff) : 0
-  const positionValue = positionSize * entryPrice
-  const positionPct   = ((positionValue / capital) * 100).toFixed(1)
-  const wr            = winRate / 100
-  const winLossRatio  = avgWin / avgLoss
-  const kelly         = ((wr * (winLossRatio + 1) - 1) / winLossRatio * 100).toFixed(1)
-  const halfKelly     = (kelly / 2).toFixed(1)
-  const ev            = ((wr * avgWin) - ((1 - wr) * avgLoss)).toFixed(0)
-  const profitFactor  = (wr * avgWin / ((1 - wr) * avgLoss)).toFixed(2)
+  const riskAmount   = (capital * riskPct) / 100;
+  const priceDiff    = Math.abs(entryPrice - stopLoss);
+  const positionSize = priceDiff > 0 ? Math.floor(riskAmount / priceDiff) : 0;
+  const positionVal  = positionSize * entryPrice;
+  const positionPct  = ((positionVal / capital) * 100).toFixed(1);
+  const wr           = winRate / 100;
+  const wlRatio      = avgWin / avgLoss;
+  const kelly        = ((wr * (wlRatio + 1) - 1) / wlRatio * 100).toFixed(1);
+  const halfKelly    = (kelly / 2).toFixed(1);
+  const ev           = ((wr * avgWin) - ((1 - wr) * avgLoss)).toFixed(0);
+  const pf           = (wr * avgWin / ((1 - wr) * avgLoss)).toFixed(2);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-      <BackButton onBack={onBack} />
+      {/* Header */}
+      <div>
+        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Risk Management</div>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Risk Calculator</h1>
+      </div>
 
-      {/* Profile selector */}
-      <Panel title="LOAD CLIENT RISK PROFILE">
-        <div style={{ fontSize: 11, color: "#666", fontFamily: mono, marginBottom: 12 }}>
-          Load preset parameters from a client profile or configure manually
-          {stats && (
-            <span style={{ color: "#ff6600", marginLeft: 8 }}>
-              · Live win rate: {stats.win_rate}% loaded
-            </span>
-          )}
-        </div>
-        <div className="flex gap-3">
+      {/* Profile selector + result tiles */}
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr 1fr", gap: 10, alignItems: "stretch" }}>
+        {/* Profile selector */}
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.green}`, borderRadius: T.rLg, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 9, color: T.green, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>Profile</div>
           {[
-            ["CUSTOM", "#ffd700", "Manual config"],
-            ["QUANT",  "#ff6600", `Aggressive · 3% risk · Win ${stats?.win_rate ?? "—"}%`],
-            ["MACRO",  "#00aaff", `Conservative · 1.5% risk · Win ${compare?.macro_stats?.win_rate ?? "—"}%`],
+            ["CUSTOM", T.amber,  "Manual"],
+            ["QUANT",  T.green,  "3% risk"],
+            ["MACRO",  T.blue,   "1.5% risk"],
           ].map(([p, c, desc]) => (
-            <button key={p}
-              className={`btn flex-1 ${profile === p ? "" : "btn-outline"}`}
-              style={{ fontFamily: mono, background: profile === p ? c : "transparent", color: profile === p ? "#000" : c, borderColor: c }}
-              onClick={() => loadProfile(p)}>
-              <div>
-                <div style={{ fontWeight: 700 }}>{p}</div>
-                <div style={{ fontSize: 10, fontWeight: 400 }}>{desc}</div>
-              </div>
-            </button>
+            <button key={p} onClick={() => loadProfile(p)} style={{
+              padding: "6px 14px", background: profile === p ? c : "transparent",
+              color: profile === p ? T.bg : c,
+              border: `1px solid ${c}`, borderRadius: T.r,
+              fontFamily: mono, fontSize: 10, fontWeight: 700, cursor: "pointer",
+              letterSpacing: "1px",
+            }}>{p}<span style={{ fontSize: 8, fontWeight: 400, marginLeft: 4, opacity: 0.7 }}>{desc}</span></button>
           ))}
         </div>
-      </Panel>
 
-      {/* Inputs */}
-      <div className="grid grid-cols-2 gap-3">
-        <Panel title="POSITION SIZE CALCULATOR">
-          <div className="flex flex-col gap-4">
-            {[
-              ["Total Capital (₹)", capital,    setCapital,    1000,   10000000, 1000],
-              ["Risk Per Trade (%)", riskPct,   setRiskPct,    0.5,    10,       0.5 ],
-              ["Entry Price (₹)",   entryPrice, setEntryPrice, 100,    100000,   100 ],
-              ["Stop Loss (₹)",     stopLoss,   setStopLoss,   100,    100000,   100 ],
-            ].map(([label, val, setter, min, max, step]) => (
-              <div key={label}>
-                <div className="flex justify-between mb-1">
-                  <span style={{ fontSize: 11, color: "#999", fontFamily: mono }}>{label}</span>
-                  <span style={{ fontSize: 11, color: "#ff6600", fontFamily: mono, fontWeight: 700 }}>{val.toLocaleString()}</span>
-                </div>
-                <input type="range" min={min} max={max} step={step} value={val}
-                  onChange={e => setter(Number(e.target.value))}
-                  className="range range-warning range-sm w-full" />
-              </div>
-            ))}
-          </div>
-        </Panel>
+        <Tile label="Risk Amount"    value={`₹${riskAmount.toLocaleString("en-IN")}`}  color={T.red}   sub={`${riskPct}% of capital`} />
+        <Tile label="Position Size"  value={`${positionSize} units`}                    color={T.amber} sub={`₹${positionVal.toLocaleString("en-IN")} (${positionPct}%)`} />
+        <Tile label="Kelly %"        value={`${kelly}%`}                                color={T.blue}  sub={`Half Kelly: ${halfKelly}%`} />
+        <Tile label="Expected Value" value={`₹${Number(ev).toLocaleString("en-IN")}`}  color={Number(ev) > 0 ? T.green : T.red} sub="per trade average" />
+      </div>
 
-        <Panel title="KELLY CRITERION CALCULATOR">
-          <div className="flex flex-col gap-4">
-            {[
-              ["Win Rate (%)", winRate, setWinRate, 30,  95,    0.5],
-              ["Avg Win (₹)",  avgWin,  setAvgWin,  500, 20000, 100],
-              ["Avg Loss (₹)", avgLoss, setAvgLoss, 500, 20000, 100],
-            ].map(([label, val, setter, min, max, step]) => (
-              <div key={label}>
-                <div className="flex justify-between mb-1">
-                  <span style={{ fontSize: 11, color: "#999", fontFamily: mono }}>{label}</span>
-                  <span style={{ fontSize: 11, color: "#00aaff", fontFamily: mono, fontWeight: 700 }}>{val.toLocaleString()}</span>
-                </div>
-                <input type="range" min={min} max={max} step={step} value={val}
-                  onChange={e => setter(Number(e.target.value))}
-                  className="range range-info range-sm w-full" />
-              </div>
-            ))}
-            <div className="alert alert-info py-2 mt-2" style={{ fontFamily: mono, fontSize: 11 }}>
-              ℹ️ Kelly % = optimal fraction of capital to risk per trade
+      {/* Main 3-col: position calc | kelly calc | analysis */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+
+        {/* Position size calc */}
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.red}`, borderRadius: T.rLg, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 10, color: T.red, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>Position Sizing</div>
+          <Slider label="Total Capital (₹)" value={capital}    setter={setCapital}    min={1000}  max={10000000} step={1000}  color={T.green} />
+          <Slider label="Risk Per Trade (%)" value={riskPct}   setter={setRiskPct}    min={0.5}   max={10}       step={0.5}   color={T.red} />
+          <Slider label="Entry Price (₹)"   value={entryPrice} setter={setEntryPrice} min={100}   max={100000}   step={100}   color={T.amber} />
+          <Slider label="Stop Loss (₹)"     value={stopLoss}   setter={setStopLoss}   min={100}   max={100000}   step={100}   color={T.red} />
+          <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(0,0,0,0.2)", border: `1px solid ${T.border}`, borderRadius: T.r }}>
+            <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, marginBottom: 4 }}>STOP DISTANCE</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.amber, fontFamily: mono }}>
+              ₹{priceDiff.toLocaleString("en-IN")} · {priceDiff > 0 ? ((priceDiff/entryPrice)*100).toFixed(2) : 0}%
             </div>
           </div>
-        </Panel>
+        </div>
+
+        {/* Kelly calc */}
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.blue}`, borderRadius: T.rLg, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 10, color: T.blue, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase" }}>Kelly Criterion</div>
+          <Slider label="Win Rate (%)"  value={winRate} setter={setWinRate} min={30}  max={95}    step={0.5}  color={T.green} />
+          <Slider label="Avg Win (₹)"   value={avgWin}  setter={setAvgWin}  min={500} max={20000} step={100}  color={T.green} />
+          <Slider label="Avg Loss (₹)"  value={avgLoss} setter={setAvgLoss} min={500} max={20000} step={100}  color={T.red} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+            <Row label="Win/Loss Ratio"  value={wlRatio.toFixed(2)}  color={wlRatio >= 1.5 ? T.green : T.amber} />
+            <Row label="Full Kelly"      value={`${kelly}%`}         color={T.blue} />
+            <Row label="Half Kelly (rec)" value={`${halfKelly}%`}    color={T.green} />
+          </div>
+          <div style={{ padding: "8px 10px", background: "rgba(251,191,36,0.08)", border: `1px solid rgba(251,191,36,0.2)`, borderRadius: T.r, fontSize: 9, color: T.amber, fontFamily: mono, lineHeight: 1.5 }}>
+            ⚠ Never risk more than 2% per trade. Use Half Kelly for real trading.
+          </div>
+        </div>
+
+        {/* Edge analysis */}
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderTop: `2px solid ${T.green}`, borderRadius: T.rLg, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 10, color: T.green, fontFamily: mono, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 6 }}>Edge Analysis</div>
+          <Row label="Capital at Risk"   value={`₹${riskAmount.toLocaleString("en-IN")}`}  color={T.red} />
+          <Row label="Position Value"    value={`₹${positionVal.toLocaleString("en-IN")}`} color={T.amber} />
+          <Row label="Capital Exposure"  value={`${positionPct}%`}                         color={parseFloat(positionPct)>20?T.red:T.green} />
+          <Row label="Max Loss"          value={`₹${riskAmount.toLocaleString("en-IN")}`}  color={T.red} />
+          <Row label="2R Profit Target"  value={`₹${(riskAmount*2).toLocaleString("en-IN")}`} color={T.green} />
+          <Row label="Profit Factor"     value={pf}                                         color={parseFloat(pf)>=1.5?T.green:T.amber} />
+          <Row label="Expected Value"    value={`₹${Number(ev).toLocaleString("en-IN")}`}  color={Number(ev)>0?T.green:T.red} />
+          <Row label="Win Rate"          value={`${winRate}%`}                              color={winRate>=60?T.green:T.amber} />
+          <div style={{ marginTop: 8, padding: "10px 12px", background: `rgba(34,197,94,0.06)`, border: `1px solid rgba(34,197,94,0.2)`, borderRadius: T.r }}>
+            <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, marginBottom: 3 }}>TRADE VERDICT</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: Number(ev) > 0 ? T.green : T.red, fontFamily: mono }}>
+              {Number(ev) > 0 ? "✓ POSITIVE EDGE" : "✗ NEGATIVE EDGE"}
+            </div>
+            <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, marginTop: 2 }}>
+              {Number(ev) > 0 ? "System has statistical edge" : "Improve win rate or reward ratio"}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Results */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          ["RISK AMOUNT",    `₹${riskAmount.toLocaleString()}`,     "#ff3131", `${riskPct}% of capital`      ],
-          ["POSITION SIZE",  `${positionSize} units`,               "#ff6600", `₹${positionValue.toLocaleString()} (${positionPct}%)`],
-          ["KELLY %",        `${kelly}%`,                           "#00aaff", `Half Kelly: ${halfKelly}%`  ],
-          ["EXPECTED VALUE", `₹${Number(ev).toLocaleString()}`,     Number(ev) > 0 ? "#00ff41" : "#ff3131", "Per trade average"],
-        ].map(([l, v, c, sub]) => (
-          <div key={l} className="stat bg-base-200 rounded-box border border-base-300"
-            style={{ borderTop: `2px solid ${c}` }}>
-            <div className="stat-title" style={{ fontFamily: mono, fontSize: 10 }}>{l}</div>
-            <div className="stat-value" style={{ color: c, fontFamily: mono, fontSize: 20 }}>{v}</div>
-            <div className="stat-desc"  style={{ fontFamily: mono }}>{sub}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Edge analysis */}
-      <div className="grid grid-cols-2 gap-3">
-        <Panel title="TRADE RISK BREAKDOWN" accent="#ff3131">
-          <div className="flex flex-col gap-3">
-            {[
-              ["Capital at Risk",    `₹${riskAmount.toLocaleString()}`,                                              "#ff3131"],
-              ["Stop Distance",      `₹${priceDiff.toLocaleString()} (${((priceDiff / entryPrice) * 100).toFixed(2)}%)`, "#ffd700"],
-              ["Position Value",     `₹${positionValue.toLocaleString()}`,                                           "#ff6600"],
-              ["Capital Exposure",   `${positionPct}%`,                                                              positionPct > 20 ? "#ff3131" : "#00ff41"],
-              ["Max Loss",           `₹${riskAmount.toLocaleString()}`,                                              "#ff3131"],
-              ["2R Profit Target",   `₹${(riskAmount * 2).toLocaleString()}`,                                        "#00ff41"],
-            ].map(([l, v, c]) => (
-              <div key={l} className="flex justify-between border-b border-base-300 pb-2">
-                <span style={{ fontSize: 12, color: "#666", fontFamily: mono }}>{l}</span>
-                <span style={{ fontSize: 12, color: c, fontFamily: mono, fontWeight: 700 }}>{v}</span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel title="EDGE ANALYSIS" accent="#00aaff">
-          <div className="flex flex-col gap-3">
-            {[
-              ["Win Rate",          `${winRate}%`,          winRate >= 60 ? "#00ff41" : "#ffd700"       ],
-              ["Win/Loss Ratio",    winLossRatio.toFixed(2), winLossRatio >= 1.5 ? "#00ff41" : "#ffd700" ],
-              ["Profit Factor",     profitFactor,            profitFactor >= 1.5 ? "#00ff41" : "#ffd700" ],
-              ["Expected Value",    `₹${Number(ev).toLocaleString()}`, Number(ev) > 0 ? "#00ff41" : "#ff3131"],
-              ["Full Kelly %",      `${kelly}%`,             "#00aaff"                                   ],
-              ["Half Kelly (Rec.)", `${halfKelly}%`,         "#00ff41"                                   ],
-            ].map(([l, v, c]) => (
-              <div key={l} className="flex justify-between border-b border-base-300 pb-2">
-                <span style={{ fontSize: 12, color: "#666", fontFamily: mono }}>{l}</span>
-                <span style={{ fontSize: 12, color: c, fontFamily: mono, fontWeight: 700 }}>{v}</span>
-              </div>
-            ))}
-          </div>
-          <div className="alert alert-warning py-2 mt-3" style={{ fontFamily: mono, fontSize: 11 }}>
-            ⚠️ Never risk more than 2% per trade. Use Half Kelly for real trading.
-          </div>
-        </Panel>
-      </div>
     </div>
-  )
+  );
 }
