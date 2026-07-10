@@ -108,9 +108,20 @@ export default function LandingPage() {
     const el = document.createElement("style");
     el.textContent = `
       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-      @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:0.35} }
-      @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-      @keyframes spin   { to{transform:rotate(360deg)} }
+      @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.35} }
+      @keyframes fadeUp   { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+      @keyframes growLine { from{width:0} to{width:40px} }
+      @keyframes spin     { to{transform:rotate(360deg)} }
+      @keyframes softGlow { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} 50%{box-shadow:0 0 24px 2px rgba(34,197,94,0.10)} }
+      .fade-up { animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+      .fade-in { animation: fadeIn 0.9s ease both; }
+      .hover-lift { transition: transform 0.25s cubic-bezier(0.16,1,0.3,1), border-color 0.25s ease, background 0.25s ease; }
+      .hover-lift:hover { transform: translateY(-2px); }
+      @media (prefers-reduced-motion: reduce) {
+        .fade-up, .fade-in { animation: none !important; }
+        .hover-lift { transition: none !important; }
+      }
     `;
     document.head.appendChild(el);
     return () => document.head.removeChild(el);
@@ -162,28 +173,30 @@ export default function LandingPage() {
       position: "relative", zIndex: 1,
     },
     heroLeft: {
-      padding: "32px 28px 24px",
+      padding: "44px 36px 30px",
       borderRight: `1px solid ${T.border}`,
       display: "flex", flexDirection: "column", justifyContent: "space-between",
     },
-    heroRight: { padding: "24px 24px 20px", display: "flex", flexDirection: "column", gap: 12 },
+    heroRight: { padding: "32px 28px 24px", display: "flex", flexDirection: "column", gap: 16, justifyContent: "center" },
     eyebrow: {
-      fontSize: 9, color: T.green, letterSpacing: "3px",
-      textTransform: "uppercase", fontFamily: T.mono, marginBottom: 10,
+      fontSize: 9.5, color: T.green, letterSpacing: "3.5px",
+      textTransform: "uppercase", fontFamily: T.mono, marginBottom: 14, fontWeight: 600,
     },
-    h1: { fontSize: "clamp(28px,3.5vw,38px)", fontWeight: 900, lineHeight: 1.04, letterSpacing: "-2px", color: "#fff", marginBottom: 6 },
-    accentBar: { width: 40, height: 2, background: T.green, margin: "10px 0 12px" },
-    desc: { fontSize: 12, color: T.textDim, lineHeight: 1.75, maxWidth: 360, marginBottom: 16 },
-    btnRow: { display: "flex", gap: 8, alignItems: "center" },
+    h1: { fontSize: "clamp(30px,4vw,44px)", fontWeight: 900, lineHeight: 1.05, letterSpacing: "-2.2px", color: "#fff", marginBottom: 8 },
+    accentBar: { width: 40, height: 2, background: T.green, margin: "16px 0 16px", animation: "growLine 0.8s 0.5s cubic-bezier(0.16,1,0.3,1) both" },
+    desc: { fontSize: 12.5, color: T.textDim, lineHeight: 1.85, maxWidth: 380, marginBottom: 22 },
+    btnRow: { display: "flex", gap: 10, alignItems: "center" },
     btnPrimary: {
-      padding: "9px 20px", background: T.green, color: T.bg,
-      border: "none", borderRadius: 5, fontSize: 10, fontWeight: 700,
-      cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans, transition: "all 0.15s",
+      padding: "10px 22px", background: T.green, color: T.bg,
+      border: "none", borderRadius: 5, fontSize: 10.5, fontWeight: 700,
+      cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans,
+      transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)",
     },
     btnSecondary: {
-      padding: "9px 20px", background: "transparent", color: T.mint,
+      padding: "10px 22px", background: "transparent", color: T.mint,
       border: `1px solid rgba(134,239,172,0.2)`, borderRadius: 5,
-      fontSize: 10, cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans, transition: "all 0.15s",
+      fontSize: 10.5, cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans,
+      transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)",
     },
     // PIPELINE
     pipeline: {
@@ -197,8 +210,9 @@ export default function LandingPage() {
     },
     // SIGNAL CARD
     signalCard: {
-      background: "linear-gradient(135deg,rgba(34,197,94,0.07),rgba(34,197,94,0.02))",
-      border: `1px solid ${T.borderMd}`, borderRadius: 8, padding: "14px 16px",
+      background: "linear-gradient(135deg,rgba(34,197,94,0.08),rgba(34,197,94,0.02))",
+      border: `1px solid ${T.borderMd}`, borderRadius: 10, padding: "18px 20px",
+      animation: "softGlow 4s ease-in-out infinite",
     },
     // BOTTOM
     bottom: {
@@ -206,11 +220,11 @@ export default function LandingPage() {
       borderTop: `1px solid ${T.border}`,
       position: "relative", zIndex: 1,
     },
-    col: { padding: "16px 22px", borderRight: `1px solid ${T.border}` },
-    colLast: { padding: "16px 20px" },
+    col: { padding: "22px 26px", borderRight: `1px solid ${T.border}` },
+    colLast: { padding: "22px 24px" },
     colLabel: {
-      fontSize: 7, color: "rgba(231,240,234,0.18)", letterSpacing: "3px",
-      textTransform: "uppercase", fontFamily: T.mono, marginBottom: 8,
+      fontSize: 7, color: "rgba(231,240,234,0.22)", letterSpacing: "3px",
+      textTransform: "uppercase", fontFamily: T.mono, marginBottom: 12,
     },
     // CLIENTS
     clients: { display: "grid", gridTemplateColumns: "1fr 16px 1fr" },
@@ -225,24 +239,25 @@ export default function LandingPage() {
       padding: "3px 0", borderBottom: `1px solid rgba(34,197,94,0.06)`,
     },
     // MODULES
-    modGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 4 },
+    modGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6 },
     mod: (hov) => ({
-      background: hov ? "rgba(34,197,94,0.06)" : "rgba(13,26,19,0.6)",
-      border: `1px solid ${hov ? "rgba(34,197,94,0.3)" : T.border}`,
-      borderRadius: 4, padding: "7px 5px", cursor: "pointer",
-      transition: "all 0.15s", textAlign: "center",
+      background: hov ? "rgba(34,197,94,0.07)" : "rgba(13,26,19,0.6)",
+      border: `1px solid ${hov ? "rgba(34,197,94,0.35)" : T.border}`,
+      borderRadius: 5, padding: "9px 6px", cursor: "pointer",
+      transform: hov ? "translateY(-2px)" : "translateY(0)",
+      transition: "all 0.22s cubic-bezier(0.16,1,0.3,1)", textAlign: "center",
     }),
     // PSYCH
     psychCard: {
       background: "rgba(13,26,19,0.6)",
       border: `1px solid rgba(192,132,252,0.15)`,
       borderLeft: `2px solid ${T.purple}`,
-      borderRadius: 5, padding: "10px 12px",
+      borderRadius: 6, padding: "14px 16px",
     },
     // FOOTER
     footer: {
       display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "8px 28px", borderTop: `1px solid ${T.border}`,
+      padding: "10px 28px", borderTop: `1px solid ${T.border}`,
       background: "rgba(4,10,6,0.8)", position: "relative", zIndex: 1,
     },
     footerTag: {
@@ -285,44 +300,44 @@ export default function LandingPage() {
         {/* LEFT */}
         <div style={s.heroLeft}>
           <div>
-            <div style={s.eyebrow}>● NSEI · Ensemble ML · Real-time Signals</div>
-            <h1 style={s.h1}>
+            <div className="fade-up" style={{ ...s.eyebrow, animationDelay: "0.05s" }}>● NSEI · Ensemble ML · Real-time Signals</div>
+            <h1 className="fade-up" style={{ ...s.h1, animationDelay: "0.15s" }}>
               Quantitative<br/>
               <span style={{ color: T.green }}>Trading</span>{" "}
               <span style={{ color: "rgba(255,255,255,0.4)" }}>meets</span><br/>
               Machine Learning
             </h1>
             <div style={s.accentBar} />
-            <p style={s.desc}>
+            <p className="fade-up" style={{ ...s.desc, animationDelay: "0.3s" }}>
               Live NSEI data → 27 engineered features →{" "}
               <strong style={{ color: T.mint }}>XGBoost + LightGBM + CatBoost</strong> ensemble → daily{" "}
               <strong style={{ color: T.mint }}>BUY / HOLD signal</strong> with full SHAP explainability.
               Two risk profiles — <strong style={{ color: T.mint }}>QUANT</strong> (aggressive) and{" "}
               <strong style={{ color: T.mint }}>MACRO</strong> (conservative) — run in parallel.
             </p>
-            <div style={s.btnRow}>
+            <div className="fade-up" style={{ ...s.btnRow, animationDelay: "0.42s" }}>
               <button style={s.btnPrimary} onClick={() => goTo("/dashboard")}
-                onMouseOver={e => { e.currentTarget.style.opacity = "0.88"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseOut={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                onMouseOver={e => { e.currentTarget.style.opacity = "0.88"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(34,197,94,0.25)"; }}
+                onMouseOut={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
                 Explore Platform
               </button>
               <button style={s.btnSecondary} onClick={() => goTo("/dashboard")}
-                onMouseOver={e => e.currentTarget.style.borderColor = "rgba(134,239,172,0.5)"}
-                onMouseOut={e => e.currentTarget.style.borderColor = "rgba(134,239,172,0.2)"}>
+                onMouseOver={e => { e.currentTarget.style.borderColor = "rgba(134,239,172,0.5)"; e.currentTarget.style.background = "rgba(134,239,172,0.05)"; }}
+                onMouseOut={e => { e.currentTarget.style.borderColor = "rgba(134,239,172,0.2)"; e.currentTarget.style.background = "transparent"; }}>
                 View Analytics
               </button>
             </div>
           </div>
 
           {/* Pipeline */}
-          <div style={{ marginTop: 20 }}>
+          <div className="fade-up" style={{ marginTop: 28, animationDelay: "0.55s" }}>
             <div style={s.colLabel}>Signal Pipeline</div>
             <div style={s.pipeline}>
               {PIPELINE.map((p, i) => (
-                <div key={i} style={{ ...s.pipeStep, borderRight: i < PIPELINE.length - 1 ? `1px solid ${T.border}` : "none" }}>
-                  <div style={{ fontSize: 12, color: T.green, marginBottom: 3 }}>{p.icon}</div>
+                <div key={i} className="hover-lift" style={{ ...s.pipeStep, borderRight: i < PIPELINE.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                  <div style={{ fontSize: 12, color: T.green, marginBottom: 4 }}>{p.icon}</div>
                   <div style={{ fontSize: 8, fontWeight: 700, color: T.pale, fontFamily: T.mono }}>{p.label}</div>
-                  <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, marginTop: 1 }}>{p.sub}</div>
+                  <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, marginTop: 2 }}>{p.sub}</div>
                 </div>
               ))}
             </div>
@@ -332,7 +347,7 @@ export default function LandingPage() {
         {/* RIGHT */}
         <div style={s.heroRight}>
           {/* Signal card */}
-          <div style={s.signalCard}>
+          <div className="fade-up" style={{ ...s.signalCard, animationDelay: "0.2s" }}>
             <div style={{ fontSize: 8, color: T.textFaint, letterSpacing: "2px", textTransform: "uppercase", fontFamily: T.mono, marginBottom: 10 }}>
               Today's ML Signal · NSEI
             </div>
@@ -368,16 +383,16 @@ export default function LandingPage() {
           </div>
 
           {/* QUANT vs MACRO mini */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div className="fade-up" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, animationDelay: "0.35s" }}>
             {[
               { name: "QUANT", ret: "+848%", alpha: "+681%", color: T.green, border: T.green, sub: "vs NSEI +167%" },
               { name: "MACRO", ret: "+251%", alpha: "+84%",  color: T.blue,  border: T.blue,  sub: "alpha +83.72%" },
             ].map(c => (
-              <div key={c.name} style={{
+              <div key={c.name} className="hover-lift" style={{
                 background: "rgba(13,26,19,0.7)",
                 border: `1px solid rgba(${c.color === T.green ? "34,197,94" : "96,165,250"},0.12)`,
                 borderTop: `2px solid ${c.border}`,
-                borderRadius: 5, padding: "8px 10px",
+                borderRadius: 6, padding: "10px 12px",
               }}>
                 <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, letterSpacing: "1px", marginBottom: 3 }}>{c.name} RETURN</div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: c.color, fontFamily: T.mono, letterSpacing: "-1px" }}>{c.ret}</div>
@@ -389,7 +404,7 @@ export default function LandingPage() {
       </div>
 
       {/* BOTTOM 3-COL */}
-      <div style={s.bottom}>
+      <div className="fade-in" style={{ ...s.bottom, animationDelay: "0.5s" }}>
         {/* COL 1: Dual clients */}
         <div style={s.col}>
           <div style={s.colLabel}>Dual Client Engine</div>
@@ -402,7 +417,7 @@ export default function LandingPage() {
                 {ci === 1 && (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "rgba(231,240,234,0.1)", fontFamily: T.mono }}>VS</div>
                 )}
-                <div style={s.clientCard(c.color)}>
+                <div className="hover-lift" style={s.clientCard(c.color)}>
                   <div style={{ fontSize: 10, fontWeight: 800, fontFamily: T.mono, letterSpacing: "1.5px", color: c.color }}>{c.name}</div>
                   <div style={{ fontSize: 6.5, color: T.textFaint, letterSpacing: "1px", textTransform: "uppercase", fontFamily: T.mono, marginBottom: 5 }}>{c.style}</div>
                   {[
