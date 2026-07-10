@@ -76,12 +76,11 @@ const MODULES = [
   { icon: "◉", label: "Market",     path: "/market"     },
 ];
 
-const PIPELINE = [
-  { icon: "↓", label: "Data",     sub: "NSEI OHLCV"   },
-  { icon: "⚙", label: "Features", sub: "27 indicators" },
-  { icon: "◈", label: "Ensemble", sub: "XGB+LGB+CAT"  },
-  { icon: "◉", label: "SHAP",     sub: "Attribution"  },
-  { icon: "⚡", label: "Signal",   sub: "BUY / HOLD"   },
+const MODEL_FACTS = [
+  { val: "1,481", label: "Days Trained",  sub: "NSEI OHLCV 2020–26" },
+  { val: "27",    label: "Features",      sub: "Engineered indicators" },
+  { val: "3",     label: "Model Ensemble",sub: "XGB + LGBM + CatBoost" },
+  { val: "0",     label: "Look-Ahead Bias", sub: "Walk-forward validated" },
 ];
 
 export default function LandingPage() {
@@ -198,14 +197,14 @@ export default function LandingPage() {
       fontSize: 10.5, cursor: "pointer", letterSpacing: "0.5px", fontFamily: T.sans,
       transition: "all 0.25s cubic-bezier(0.16,1,0.3,1)",
     },
-    // PIPELINE
-    pipeline: {
+    // MODEL FACTS
+    factStrip: {
       display: "flex", alignItems: "stretch",
       background: "rgba(13,26,19,0.5)", border: `1px solid ${T.border}`,
       borderRadius: 6, overflow: "hidden",
     },
-    pipeStep: {
-      flex: 1, padding: "8px 4px", textAlign: "center",
+    factStep: {
+      flex: 1, padding: "10px 6px", textAlign: "center",
       borderRight: `1px solid ${T.border}`,
     },
     // SIGNAL CARD
@@ -247,12 +246,13 @@ export default function LandingPage() {
       transform: hov ? "translateY(-2px)" : "translateY(0)",
       transition: "all 0.22s cubic-bezier(0.16,1,0.3,1)", textAlign: "center",
     }),
-    // PSYCH
+    // PSYCH — prioritized/highlighted card
     psychCard: {
-      background: "rgba(13,26,19,0.6)",
-      border: `1px solid rgba(192,132,252,0.15)`,
-      borderLeft: `2px solid ${T.purple}`,
-      borderRadius: 6, padding: "14px 16px",
+      background: "linear-gradient(135deg,rgba(192,132,252,0.09),rgba(13,26,19,0.7))",
+      border: `1px solid rgba(192,132,252,0.3)`,
+      borderLeft: `3px solid ${T.purple}`,
+      borderRadius: 7, padding: "16px 18px",
+      boxShadow: "0 0 20px rgba(192,132,252,0.06)",
     },
     // FOOTER
     footer: {
@@ -278,7 +278,7 @@ export default function LandingPage() {
           <div style={s.logoText}>AlgoTerminal</div>
         </button>
         <div style={{ display: "flex", gap: 2 }}>
-          {["Features","Analytics","Clients","Research"].map((l, i) => (
+          {["Features","Analytics","Clients"].map((l, i) => (
             <button key={l} style={s.navLink(hovNav === i)}
               onMouseEnter={() => setHovNav(i)} onMouseLeave={() => setHovNav(null)}>
               {l}
@@ -286,7 +286,11 @@ export default function LandingPage() {
           ))}
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <div style={s.liveBadge}><div style={s.liveDot} />LIVE</div>
+          <div style={{ ...s.liveBadge, borderColor: market?.is_open ? "rgba(34,197,94,0.25)" : "rgba(248,113,113,0.25)", color: market?.is_open ? T.green : T.red }}>
+            <div style={{ ...s.liveDot, background: market?.is_open ? T.green : T.red }} />
+            {market ? `NSEI ${market.status}` : "LIVE"}
+            {market?.current_time_ist && <span style={{ opacity: 0.5, marginLeft: 4 }}>· {market.current_time_ist} IST</span>}
+          </div>
           <button style={s.ctaBtn} onClick={() => goTo("/dashboard")}
             onMouseOver={e => e.currentTarget.style.opacity = "0.85"}
             onMouseOut={e => e.currentTarget.style.opacity = "1"}>
@@ -329,15 +333,15 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Pipeline */}
+          {/* Model snapshot — what this actually is */}
           <div className="fade-up" style={{ marginTop: 28, animationDelay: "0.55s" }}>
-            <div style={s.colLabel}>Signal Pipeline</div>
-            <div style={s.pipeline}>
-              {PIPELINE.map((p, i) => (
-                <div key={i} className="hover-lift" style={{ ...s.pipeStep, borderRight: i < PIPELINE.length - 1 ? `1px solid ${T.border}` : "none" }}>
-                  <div style={{ fontSize: 12, color: T.green, marginBottom: 4 }}>{p.icon}</div>
-                  <div style={{ fontSize: 8, fontWeight: 700, color: T.pale, fontFamily: T.mono }}>{p.label}</div>
-                  <div style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono, marginTop: 2 }}>{p.sub}</div>
+            <div style={s.colLabel}>What Powers This</div>
+            <div style={s.factStrip}>
+              {MODEL_FACTS.map((f, i) => (
+                <div key={i} className="hover-lift" style={{ ...s.factStep, borderRight: i < MODEL_FACTS.length - 1 ? `1px solid ${T.border}` : "none" }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: T.green, fontFamily: T.mono, letterSpacing: "-0.5px" }}>{f.val}</div>
+                  <div style={{ fontSize: 8, fontWeight: 700, color: T.pale, fontFamily: T.mono, marginTop: 2 }}>{f.label}</div>
+                  <div style={{ fontSize: 6.5, color: T.textFaint, fontFamily: T.mono, marginTop: 1 }}>{f.sub}</div>
                 </div>
               ))}
             </div>
@@ -408,33 +412,30 @@ export default function LandingPage() {
         {/* COL 1: Dual clients */}
         <div style={s.col}>
           <div style={s.colLabel}>Dual Client Engine</div>
-          <div style={s.clients}>
+          <div style={{ ...s.clients, alignItems: "stretch" }}>
             {[
               { name: "QUANT", style: "Aggressive", color: T.green, threshold: "≥55%", position: "95%", stop: "3%", ret: "+848%", alpha: "+681%" },
               { name: "MACRO", style: "Conservative", color: T.blue,  threshold: "≥65%", position: "60%", stop: "1.5%", ret: "+251%", alpha: "+84%" },
-            ].map((c, ci) => (
-              <div key={c.name}>
-                {ci === 1 && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "rgba(231,240,234,0.1)", fontFamily: T.mono }}>VS</div>
-                )}
-                <div className="hover-lift" style={s.clientCard(c.color)}>
-                  <div style={{ fontSize: 10, fontWeight: 800, fontFamily: T.mono, letterSpacing: "1.5px", color: c.color }}>{c.name}</div>
-                  <div style={{ fontSize: 6.5, color: T.textFaint, letterSpacing: "1px", textTransform: "uppercase", fontFamily: T.mono, marginBottom: 5 }}>{c.style}</div>
-                  {[
-                    ["Threshold", c.threshold, c.color],
-                    ["Position", c.position, T.text],
-                    ["Stop loss", c.stop, T.red],
-                    ["Return", c.ret, T.green],
-                    ["Alpha", c.alpha, T.green],
-                  ].map(([label, val, color]) => (
-                    <div key={label} style={{ ...s.cstat, borderBottom: label === "Alpha" ? "none" : `1px solid rgba(34,197,94,0.06)` }}>
-                      <span style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono }}>{label}</span>
-                      <span style={{ fontSize: 8, fontWeight: 700, fontFamily: T.mono, color }}>{val}</span>
-                    </div>
-                  ))}
-                </div>
+            ].map((c) => (
+              <div key={c.name} className="hover-lift" style={s.clientCard(c.color)}>
+                <div style={{ fontSize: 10, fontWeight: 800, fontFamily: T.mono, letterSpacing: "1.5px", color: c.color }}>{c.name}</div>
+                <div style={{ fontSize: 6.5, color: T.textFaint, letterSpacing: "1px", textTransform: "uppercase", fontFamily: T.mono, marginBottom: 5 }}>{c.style}</div>
+                {[
+                  ["Threshold", c.threshold, c.color],
+                  ["Position", c.position, T.text],
+                  ["Stop loss", c.stop, T.red],
+                  ["Return", c.ret, T.green],
+                  ["Alpha", c.alpha, T.green],
+                ].map(([label, val, color]) => (
+                  <div key={label} style={{ ...s.cstat, borderBottom: label === "Alpha" ? "none" : `1px solid rgba(34,197,94,0.06)` }}>
+                    <span style={{ fontSize: 7, color: T.textFaint, fontFamily: T.mono }}>{label}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, fontFamily: T.mono, color }}>{val}</span>
+                  </div>
+                ))}
               </div>
-            )).reduce((acc, el, i) => i === 1 ? [...acc, <div key="vs" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "rgba(231,240,234,0.1)", fontFamily: T.mono }}>VS</div>, el] : [...acc, el], [])}
+            )).reduce((acc, el, i) => i === 1
+              ? [...acc, <div key="vs" style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "rgba(231,240,234,0.15)", fontFamily: T.mono }}>VS</div>, el]
+              : [...acc, el], [])}
           </div>
         </div>
 
@@ -458,8 +459,11 @@ export default function LandingPage() {
 
         {/* COL 3: Psychology */}
         <div style={s.colLast}>
-          <div style={s.colLabel}>Psychology Engine</div>
-          <div style={s.psychCard}>
+          <div style={{ ...s.colLabel, color: T.purple, opacity: 0.7, display: "flex", alignItems: "center", gap: 6 }}>
+            Psychology Engine
+            <span style={{ fontSize: 6, padding: "1px 5px", border: `1px solid rgba(192,132,252,0.4)`, borderRadius: 3, letterSpacing: "0.5px" }}>FEATURED</span>
+          </div>
+          <div className="hover-lift" style={s.psychCard}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, color: T.purple, fontFamily: T.mono, letterSpacing: "0.5px" }}>◎ PSYCHOLOGY MONITOR</div>
