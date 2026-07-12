@@ -564,6 +564,69 @@ def get_clients_compare():
                       "macro_vs_nsei": round(ms["total_return"] - nr, 2)}}
 
 
+# ── STRATEGY ENGINE (Phase 4/5) ──────────────────────────────────────────────
+# Reads data/strategies_output.json, produced by running strategy_engine.py
+# (NOT computed live here — this endpoint just serves whatever that file
+# currently contains). Reorders the 3 strategies so the one matching the
+# questionnaire's computed profile (QUANT / MACRO / BALANCED) comes first.
+
+STRATEGIES_JSON_PATH = "../data/strategies_output.json"
+
+PROFILE_TO_STRATEGY = {
+    "QUANT": "high_conviction_momentum",
+    "MACRO": "defensive_core",
+    "BALANCED": "diversified_quality",
+}
+
+STRATEGY_KEY_ORDER = ["high_conviction_momentum", "diversified_quality", "defensive_core"]
+
+
+@app.get("/strategies/recommend")
+def get_strategy_recommendation(profile: str = "BALANCED"):
+    """
+    Returns all 3 strategies (backtest stats + today's live picks), reordered
+    so the one matching the given profile comes first. profile should be one
+    of QUANT / MACRO / BALANCED (falls back to BALANCED if unrecognized).
+    """
+    if not os.path.exists(STRATEGIES_JSON_PATH):
+        return {
+            "error": "not_run",
+            "message": "strategies_output.json not found — run strategy_engine.py first.",
+        }
+
+    with open(STRATEGIES_JSON_PATH) as f:
+        all_strategies = json.load(f)
+
+    normalized_profile = (profile or "BALANCED").upper()
+    preferred_key = PROFILE_TO_STRATEGY.get(normalized_profile, "diversified_quality")
+
+    order = [preferred_key] + [k for k in STRATEGY_KEY_ORDER if k != preferred_key]
+
+    strategies = []
+    for key in order:
+        if key not in all_strategies:
+            continue
+        entry = all_strategies[key]
+        live = entry.get("live_recommendation", {})
+        strategies.append({
+            "key": key,
+            "recommended": key == preferred_key,
+            "label": live.get("strategy", key),
+            "as_of_date": live.get("as_of_date"),
+            "backtest_stats": entry.get("backtest_stats", {}),
+            "num_stocks": live.get("num_stocks", 0),
+            "equity_exposure_pct": live.get("equity_exposure_pct", 100.0),
+            "cash_reserve_rupees": live.get("cash_reserve_rupees", 0),
+            "holdings": live.get("holdings", []),
+        })
+
+    return {
+        "profile": normalized_profile,
+        "recommended_strategy": preferred_key,
+        "strategies": strategies,
+    }
+
+
 @app.get("/meta")
 def get_meta():
     import yfinance as yf

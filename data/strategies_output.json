@@ -1,0 +1,407 @@
+{
+  "high_conviction_momentum": {
+    "backtest_stats": {
+      "label": "High-Conviction Momentum",
+      "initial_capital": 100000,
+      "final_value": 106253.98,
+      "total_return_pct": 6.25,
+      "cagr_pct": 7.55,
+      "sharpe": 0.5,
+      "max_drawdown_pct": 14.41,
+      "total_trades": 348,
+      "win_rate_pct": 52.3,
+      "wins": 91,
+      "losses": 83
+    },
+    "live_recommendation": {
+      "strategy": "High-Conviction Momentum",
+      "as_of_date": "2026-06-23",
+      "num_stocks": 9,
+      "equity_exposure_pct": 100.0,
+      "cash_reserve_rupees": 0.0,
+      "holdings": [
+        {
+          "symbol": "ADANIENT.NS",
+          "sector": "Trading",
+          "price": 2962.9,
+          "weight_pct": 11.1,
+          "suggested_qty": 3,
+          "allocated_rupees": 8888.7,
+          "pred_score": 0.02802
+        },
+        {
+          "symbol": "TMPV.NS",
+          "sector": "Automobile",
+          "price": 354.55,
+          "weight_pct": 11.1,
+          "suggested_qty": 31,
+          "allocated_rupees": 10991.05,
+          "pred_score": 0.01827
+        },
+        {
+          "symbol": "BEL.NS",
+          "sector": "Capital Goods",
+          "price": 420.0,
+          "weight_pct": 11.1,
+          "suggested_qty": 26,
+          "allocated_rupees": 10920.0,
+          "pred_score": 0.01469
+        },
+        {
+          "symbol": "HINDUNILVR.NS",
+          "sector": "FMCG",
+          "price": 2160.1,
+          "weight_pct": 11.1,
+          "suggested_qty": 5,
+          "allocated_rupees": 10800.5,
+          "pred_score": 0.01441
+        },
+        {
+          "symbol": "COALINDIA.NS",
+          "sector": "Mining",
+          "price": 444.35,
+          "weight_pct": 11.1,
+          "suggested_qty": 25,
+          "allocated_rupees": 11108.75,
+          "pred_score": 0.01439
+        },
+        {
+          "symbol": "TECHM.NS",
+          "sector": "IT",
+          "price": 1379.74,
+          "weight_pct": 11.1,
+          "suggested_qty": 8,
+          "allocated_rupees": 11037.96,
+          "pred_score": 0.01279
+        },
+        {
+          "symbol": "ADANIPORTS.NS",
+          "sector": "Infrastructure",
+          "price": 1784.0,
+          "weight_pct": 11.1,
+          "suggested_qty": 6,
+          "allocated_rupees": 10704.0,
+          "pred_score": 0.01246
+        },
+        {
+          "symbol": "TATASTEEL.NS",
+          "sector": "Iron & Steel",
+          "price": 193.56,
+          "weight_pct": 11.1,
+          "suggested_qty": 57,
+          "allocated_rupees": 11032.92,
+          "pred_score": 0.01241
+        },
+        {
+          "symbol": "M&M.NS",
+          "sector": "Automobile",
+          "price": 3005.74,
+          "weight_pct": 11.1,
+          "suggested_qty": 3,
+          "allocated_rupees": 9017.21,
+          "pred_score": 0.0119
+        }
+      ]
+    }
+  },
+  "diversified_quality": {
+    "backtest_stats": {
+      "label": "Diversified Quality",
+      "initial_capital": 100000,
+      "final_value": 105758.91,
+      "total_return_pct": 5.76,
+      "cagr_pct": 6.95,
+      "sharpe": 0.5,
+      "max_drawdown_pct": 12.15,
+      "total_trades": 526,
+      "win_rate_pct": 54.0,
+      "wins": 142,
+      "losses": 121
+    },
+    "live_recommendation": {
+      "strategy": "Diversified Quality",
+      "as_of_date": "2026-06-23",
+      "num_stocks": 14,
+      "equity_exposure_pct": 100.0,
+      "cash_reserve_rupees": 0.0,
+      "holdings": [
+        {
+          "symbol": "ADANIENT.NS",
+          "sector": "Trading",
+          "price": 2962.9,
+          "weight_pct": 7.1,
+          "suggested_qty": 2,
+          "allocated_rupees": 5925.8,
+          "pred_score": 0.02802
+        },
+        {
+          "symbol": "TMPV.NS",
+          "sector": "Automobile",
+          "price": 354.55,
+          "weight_pct": 7.1,
+          "suggested_qty": 20,
+          "allocated_rupees": 7091.0,
+          "pred_score": 0.01827
+        },
+        {
+          "symbol": "BEL.NS",
+          "sector": "Capital Goods",
+          "price": 420.0,
+          "weight_pct": 7.1,
+          "suggested_qty": 17,
+          "allocated_rupees": 7140.0,
+          "pred_score": 0.01469
+        },
+        {
+          "symbol": "HINDUNILVR.NS",
+          "sector": "FMCG",
+          "price": 2160.1,
+          "weight_pct": 7.1,
+          "suggested_qty": 3,
+          "allocated_rupees": 6480.3,
+          "pred_score": 0.01441
+        },
+        {
+          "symbol": "COALINDIA.NS",
+          "sector": "Mining",
+          "price": 444.35,
+          "weight_pct": 7.1,
+          "suggested_qty": 16,
+          "allocated_rupees": 7109.6,
+          "pred_score": 0.01439
+        },
+        {
+          "symbol": "TECHM.NS",
+          "sector": "IT",
+          "price": 1379.74,
+          "weight_pct": 7.1,
+          "suggested_qty": 5,
+          "allocated_rupees": 6898.72,
+          "pred_score": 0.01279
+        },
+        {
+          "symbol": "ADANIPORTS.NS",
+          "sector": "Infrastructure",
+          "price": 1784.0,
+          "weight_pct": 7.1,
+          "suggested_qty": 4,
+          "allocated_rupees": 7136.0,
+          "pred_score": 0.01246
+        },
+        {
+          "symbol": "TATASTEEL.NS",
+          "sector": "Iron & Steel",
+          "price": 193.56,
+          "weight_pct": 7.1,
+          "suggested_qty": 36,
+          "allocated_rupees": 6968.16,
+          "pred_score": 0.01241
+        },
+        {
+          "symbol": "M&M.NS",
+          "sector": "Automobile",
+          "price": 3005.74,
+          "weight_pct": 7.1,
+          "suggested_qty": 2,
+          "allocated_rupees": 6011.47,
+          "pred_score": 0.0119
+        },
+        {
+          "symbol": "HINDALCO.NS",
+          "sector": "Metals",
+          "price": 981.68,
+          "weight_pct": 7.1,
+          "suggested_qty": 7,
+          "allocated_rupees": 6871.75,
+          "pred_score": 0.0114
+        },
+        {
+          "symbol": "TATACONSUM.NS",
+          "sector": "FMCG",
+          "price": 1103.8,
+          "weight_pct": 7.1,
+          "suggested_qty": 6,
+          "allocated_rupees": 6622.8,
+          "pred_score": 0.01068
+        },
+        {
+          "symbol": "ULTRACEMCO.NS",
+          "sector": "Construction Materials",
+          "price": 11307.0,
+          "weight_pct": 7.1,
+          "suggested_qty": 0,
+          "allocated_rupees": 0.0,
+          "pred_score": 0.01035
+        },
+        {
+          "symbol": "SBIN.NS",
+          "sector": "Bank",
+          "price": 1024.2,
+          "weight_pct": 7.1,
+          "suggested_qty": 6,
+          "allocated_rupees": 6145.2,
+          "pred_score": 0.01025
+        },
+        {
+          "symbol": "MARUTI.NS",
+          "sector": "Automobile",
+          "price": 13451.0,
+          "weight_pct": 7.1,
+          "suggested_qty": 0,
+          "allocated_rupees": 0.0,
+          "pred_score": 0.01019
+        }
+      ]
+    }
+  },
+  "defensive_core": {
+    "backtest_stats": {
+      "label": "Defensive Core",
+      "initial_capital": 100000,
+      "final_value": 105041.1,
+      "total_return_pct": 5.04,
+      "cagr_pct": 6.08,
+      "sharpe": 0.6,
+      "max_drawdown_pct": 7.61,
+      "total_trades": 500,
+      "win_rate_pct": 53.6,
+      "wins": 134,
+      "losses": 116
+    },
+    "live_recommendation": {
+      "strategy": "Defensive Core",
+      "as_of_date": "2026-06-23",
+      "num_stocks": 14,
+      "equity_exposure_pct": 70.0,
+      "cash_reserve_rupees": 30000.0,
+      "holdings": [
+        {
+          "symbol": "ADANIENT.NS",
+          "sector": "Trading",
+          "price": 2962.9,
+          "weight_pct": 5.0,
+          "suggested_qty": 1,
+          "allocated_rupees": 2962.9,
+          "pred_score": 0.02802
+        },
+        {
+          "symbol": "TMPV.NS",
+          "sector": "Automobile",
+          "price": 354.55,
+          "weight_pct": 5.0,
+          "suggested_qty": 14,
+          "allocated_rupees": 4963.7,
+          "pred_score": 0.01827
+        },
+        {
+          "symbol": "BEL.NS",
+          "sector": "Capital Goods",
+          "price": 420.0,
+          "weight_pct": 5.0,
+          "suggested_qty": 11,
+          "allocated_rupees": 4620.0,
+          "pred_score": 0.01469
+        },
+        {
+          "symbol": "HINDUNILVR.NS",
+          "sector": "FMCG",
+          "price": 2160.1,
+          "weight_pct": 5.0,
+          "suggested_qty": 2,
+          "allocated_rupees": 4320.2,
+          "pred_score": 0.01441
+        },
+        {
+          "symbol": "COALINDIA.NS",
+          "sector": "Mining",
+          "price": 444.35,
+          "weight_pct": 5.0,
+          "suggested_qty": 11,
+          "allocated_rupees": 4887.85,
+          "pred_score": 0.01439
+        },
+        {
+          "symbol": "TECHM.NS",
+          "sector": "IT",
+          "price": 1379.74,
+          "weight_pct": 5.0,
+          "suggested_qty": 3,
+          "allocated_rupees": 4139.23,
+          "pred_score": 0.01279
+        },
+        {
+          "symbol": "ADANIPORTS.NS",
+          "sector": "Infrastructure",
+          "price": 1784.0,
+          "weight_pct": 5.0,
+          "suggested_qty": 2,
+          "allocated_rupees": 3568.0,
+          "pred_score": 0.01246
+        },
+        {
+          "symbol": "TATASTEEL.NS",
+          "sector": "Iron & Steel",
+          "price": 193.56,
+          "weight_pct": 5.0,
+          "suggested_qty": 25,
+          "allocated_rupees": 4839.0,
+          "pred_score": 0.01241
+        },
+        {
+          "symbol": "M&M.NS",
+          "sector": "Automobile",
+          "price": 3005.74,
+          "weight_pct": 5.0,
+          "suggested_qty": 1,
+          "allocated_rupees": 3005.74,
+          "pred_score": 0.0119
+        },
+        {
+          "symbol": "HINDALCO.NS",
+          "sector": "Metals",
+          "price": 981.68,
+          "weight_pct": 5.0,
+          "suggested_qty": 5,
+          "allocated_rupees": 4908.39,
+          "pred_score": 0.0114
+        },
+        {
+          "symbol": "TATACONSUM.NS",
+          "sector": "FMCG",
+          "price": 1103.8,
+          "weight_pct": 5.0,
+          "suggested_qty": 4,
+          "allocated_rupees": 4415.2,
+          "pred_score": 0.01068
+        },
+        {
+          "symbol": "ULTRACEMCO.NS",
+          "sector": "Construction Materials",
+          "price": 11307.0,
+          "weight_pct": 5.0,
+          "suggested_qty": 0,
+          "allocated_rupees": 0.0,
+          "pred_score": 0.01035
+        },
+        {
+          "symbol": "SBIN.NS",
+          "sector": "Bank",
+          "price": 1024.2,
+          "weight_pct": 5.0,
+          "suggested_qty": 4,
+          "allocated_rupees": 4096.8,
+          "pred_score": 0.01025
+        },
+        {
+          "symbol": "MARUTI.NS",
+          "sector": "Automobile",
+          "price": 13451.0,
+          "weight_pct": 5.0,
+          "suggested_qty": 0,
+          "allocated_rupees": 0.0,
+          "pred_score": 0.01019
+        }
+      ]
+    }
+  }
+}

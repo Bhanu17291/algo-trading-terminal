@@ -30,6 +30,8 @@ import HeatmapPage    from "./components/pages/HeatmapPage";
 import ScreenerPage   from "./components/pages/ScreenerPage";
 import NewsPage       from "./components/pages/NewsPage";
 import ClientsPage    from "./components/pages/ClientsPage";
+import OnboardingQuestionnaire from "./components/pages/OnboardingQuestionnaire";
+import StrategiesPage from "./components/pages/StrategiesPage";
 
 const API = "https://algo-trading-terminal.onrender.com";
 
@@ -154,6 +156,13 @@ export default function App() {
     <Routes>
       {/* Landing — no sidebar, no wake gate */}
       <Route path="/" element={<LandingPage />} />
+
+      {/* Onboarding questionnaire — no wake gate, no backend calls, just a form */}
+      <Route path="/onboarding" element={<OnboardingQuestionnaire />} />
+
+      {/* Strategies page — needs the backend (WakeGate), but manages its own
+          fetch rather than going through AppWrapper's shared data-loading */}
+      <Route path="/strategies" element={<WakeGate><StrategiesPage /></WakeGate>} />
 
       {/* All dashboard pages — gated behind WakeGate */}
       <Route path="/dashboard"  element={<WakeGate><AppWrapper Component={Dashboard} /></WakeGate>} />
