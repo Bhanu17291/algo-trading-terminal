@@ -48,6 +48,7 @@ export default function StrategiesPage() {
   // Profile comes from the onboarding questionnaire's router state.
   // Falls back to BALANCED if someone lands here directly (e.g. skipped onboarding).
   const initialProfile = location.state?.customerProfile || "BALANCED";
+  const investmentAmount = location.state?.investmentAmount || 100000;
 
   const [profile, setProfile] = useState(initialProfile);
   const [data, setData] = useState(null);
@@ -84,6 +85,12 @@ export default function StrategiesPage() {
     title: { fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: "-0.5px", marginBottom: 8 },
     sub: { fontSize: 12.5, color: T.textDim, lineHeight: 1.7, maxWidth: 640 },
     profileRow: { display: "flex", gap: 8, margin: "20px 0" },
+    amountNote: { fontSize: 10.5, color: T.textDim, fontFamily: T.mono, marginBottom: 4 },
+    projectionBox: {
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      padding: "10px 12px", marginBottom: 14, borderRadius: 6,
+      background: "rgba(34,197,94,0.06)", border: `1px solid rgba(34,197,94,0.15)`,
+    },
     profilePill: (active) => ({
       padding: "6px 16px", borderRadius: 20, fontSize: 10.5, fontFamily: T.mono,
       cursor: "pointer", border: `1px solid ${active ? T.green : T.border}`,
@@ -151,6 +158,11 @@ export default function StrategiesPage() {
             </button>
           ))}
         </div>
+        <div style={s.amountNote}>
+          Figures below are based on an investment of <strong style={{ color: T.mint }}>
+          ₹{investmentAmount.toLocaleString("en-IN")}</strong>. Projections use each strategy's
+          backtested CAGR — past performance, not a guarantee of future results.
+        </div>
       </div>
 
       {loading && (
@@ -170,7 +182,15 @@ export default function StrategiesPage() {
           <div style={s.grid}>
             {data.strategies.map((strat) => {
               const isExpanded = expandedKeys.has(strat.key);
-              const shownHoldings = isExpanded ? strat.holdings : strat.holdings.slice(0, 5);
+              // Rescale each holding's qty/allocation from the API's example
+              // capital basis to the user's actual chosen investment amount.
+              const rescaledHoldings = strat.holdings.map((h) => {
+                const alloc = investmentAmount * (h.weight_pct / 100);
+                const qty = Math.floor(alloc / h.price);
+                return { ...h, suggested_qty: qty, allocated_rupees: qty * h.price };
+              });
+              const shownHoldings = isExpanded ? rescaledHoldings : rescaledHoldings.slice(0, 5);
+              const projectedValue = investmentAmount * (1 + strat.backtest_stats.cagr_pct / 100);
               return (
                 <div key={strat.key} style={s.card(strat.recommended)}>
                   {strat.recommended && <div style={s.badge}>Recommended for you</div>}
@@ -194,6 +214,15 @@ export default function StrategiesPage() {
                       <div style={s.statLabel}>Win Rate</div>
                       <div style={s.statValue()}>{strat.backtest_stats.win_rate_pct}%</div>
                     </div>
+                  </div>
+
+                  <div style={s.projectionBox}>
+                    <span style={{ fontSize: 9, fontFamily: T.mono, color: T.textFaint, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Projected · 1yr
+                    </span>
+                    <span style={{ fontSize: 12, fontFamily: T.mono, fontWeight: 700, color: T.mint }}>
+                      ₹{Math.round(investmentAmount).toLocaleString("en-IN")} → ₹{Math.round(projectedValue).toLocaleString("en-IN")}
+                    </span>
                   </div>
 
                   <div style={{ flex: 1 }}>

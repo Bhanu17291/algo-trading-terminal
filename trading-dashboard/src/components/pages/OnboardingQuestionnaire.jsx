@@ -79,13 +79,28 @@ const STEPS = [
     id: "goal",
     type: "select",
     title: "What's the goal here?",
-    sub: "Last one — then straight to your dashboard.",
+    sub: "Almost done.",
     options: [
       { label: "Protect what I have",      weight: -1 },
       { label: "Steady, compounding growth", weight: 0 },
       { label: "Maximize returns",          weight: 1  },
     ],
     validate: (v) => (v === undefined || v === null ? "Pick one to continue." : null),
+  },
+  {
+    id: "amount",
+    type: "amount",
+    title: "How much are you looking to invest?",
+    sub: "This is just to show you a projected outcome — you can change it any time.",
+    min: 15000,
+    max: 500000,
+    step: 5000,
+    default: 100000,
+    validate: (v) => {
+      const amt = v ?? 100000;
+      if (amt < 15000 || amt > 500000) return "Enter an amount between ₹15,000 and ₹5,00,000.";
+      return null;
+    },
   },
 ];
 
@@ -123,10 +138,11 @@ export default function OnboardingQuestionnaire() {
 
     if (isLast) {
       const profile = computeProfile(answers);
-      console.log("DEBUG: about to navigate to /strategies with profile", profile); // TEMPORARY — remove after debugging
+      const investmentAmount = answers.amount ?? 100000;
       navigate("/strategies", {
         state: {
           customerProfile: profile,
+          investmentAmount,
           onboarding: { name: answers.name, email: answers.email },
         },
       });
@@ -191,6 +207,17 @@ export default function OnboardingQuestionnaire() {
       cursor: "pointer", letterSpacing: "0.3px", fontFamily: T.sans,
     },
     skipBtn: { background: "none", border: "none", color: T.textFaint, fontSize: 9.5, cursor: "pointer", fontFamily: T.mono, letterSpacing: "0.5px" },
+    amountValue: {
+      fontSize: 30, fontWeight: 800, color: T.mint, fontFamily: T.mono,
+      textAlign: "center", marginBottom: 20, letterSpacing: "-0.5px",
+    },
+    slider: {
+      width: "100%", accentColor: T.green, cursor: "pointer",
+    },
+    sliderLabels: {
+      display: "flex", justifyContent: "space-between", marginTop: 6,
+      fontSize: 9.5, color: T.textFaint, fontFamily: T.mono,
+    },
   };
 
   return (
@@ -232,6 +259,27 @@ export default function OnboardingQuestionnaire() {
                 {opt.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {current.type === "amount" && (
+          <div>
+            <div style={s.amountValue}>
+              ₹{(answers.amount ?? current.default).toLocaleString("en-IN")}
+            </div>
+            <input
+              type="range"
+              min={current.min}
+              max={current.max}
+              step={current.step}
+              value={answers.amount ?? current.default}
+              onChange={(e) => setAnswer(Number(e.target.value))}
+              style={s.slider}
+            />
+            <div style={s.sliderLabels}>
+              <span>₹15,000</span>
+              <span>₹5,00,000</span>
+            </div>
           </div>
         )}
 
