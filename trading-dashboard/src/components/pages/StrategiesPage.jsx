@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// TEMPORARY: pointing at local backend for testing. Switch back to
-// "https://algo-trading-terminal.onrender.com" once the new /strategies/recommend
-// endpoint is deployed to Render.
-const API = "http://localhost:8000";
+const API = "https://algo-trading-terminal.onrender.com";
 
 const T = {
   bg:        "#040A06",
@@ -56,7 +53,7 @@ export default function StrategiesPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [expandedKey, setExpandedKey] = useState(null);
+  const [expandedKeys, setExpandedKeys] = useState(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -121,11 +118,6 @@ export default function StrategiesPage() {
     },
     statLabel: { fontSize: 8, color: T.textFaint, fontFamily: T.mono, letterSpacing: "0.5px", textTransform: "uppercase" },
     statValue: (color) => ({ fontSize: 15, fontWeight: 700, color: color || T.pale, fontFamily: T.mono, marginTop: 2 }),
-    exposureNote: {
-      fontSize: 9.5, color: T.amber, fontFamily: T.mono, marginBottom: 12,
-      padding: "6px 10px", background: "rgba(251,191,36,0.06)", borderRadius: 4,
-      border: "1px solid rgba(251,191,36,0.15)",
-    },
     holdingsToggle: {
       fontSize: 10, color: T.mint, fontFamily: T.mono, background: "none", border: "none",
       cursor: "pointer", padding: "6px 0", textAlign: "left", letterSpacing: "0.3px",
@@ -177,7 +169,7 @@ export default function StrategiesPage() {
         <>
           <div style={s.grid}>
             {data.strategies.map((strat) => {
-              const isExpanded = expandedKey === strat.key;
+              const isExpanded = expandedKeys.has(strat.key);
               const shownHoldings = isExpanded ? strat.holdings : strat.holdings.slice(0, 5);
               return (
                 <div key={strat.key} style={s.card(strat.recommended)}>
@@ -204,12 +196,6 @@ export default function StrategiesPage() {
                     </div>
                   </div>
 
-                  {strat.equity_exposure_pct < 100 && (
-                    <div style={s.exposureNote}>
-                      {strat.equity_exposure_pct}% invested · ₹{strat.cash_reserve_rupees.toLocaleString("en-IN")} held as cash buffer
-                    </div>
-                  )}
-
                   <div style={{ flex: 1 }}>
                     {shownHoldings.map((h) => (
                       <div key={h.symbol} style={s.holdingRow}>
@@ -222,7 +208,12 @@ export default function StrategiesPage() {
                   {strat.holdings.length > 5 && (
                     <button
                       style={s.holdingsToggle}
-                      onClick={() => setExpandedKey(isExpanded ? null : strat.key)}
+                      onClick={() => setExpandedKeys((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(strat.key)) next.delete(strat.key);
+                        else next.add(strat.key);
+                        return next;
+                      })}
                     >
                       {isExpanded ? "Show less ↑" : `Show all ${strat.holdings.length} stocks ↓`}
                     </button>
