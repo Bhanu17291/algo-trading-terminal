@@ -16,7 +16,7 @@ function Tile({ label, value, color, sub }) {
   );
 }
 
-export default function BacktestPage({ portfolio, stats, compare }) {
+export default function BacktestPage({ portfolio, stats, compare, showHeader = true }) {
   const initial = 100000;
 
   const mlReturn  = stats?.total_return != null ? `${stats.total_return}%` : "—";
@@ -67,10 +67,12 @@ export default function BacktestPage({ portfolio, stats, compare }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Strategy Analysis</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Backtest — Strategy Comparison</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Strategy Analysis</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Backtest — Strategy Comparison</h1>
+        </div>
+      )}
 
       {/* Alpha tiles */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 }}>

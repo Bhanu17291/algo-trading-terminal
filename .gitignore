@@ -14,6 +14,9 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Secrets — never commit real credentials
+backend/.env
+
 # Keep models and data — needed for deployment
 # *.pkl  <-- removed, models must be committed
 # data/*.csv  <-- removed, data must be committed

@@ -33,7 +33,7 @@ function generateSignal(symbol) {
   };
 }
 
-export default function ScreenerPage() {
+export default function ScreenerPage({ showHeader = true }) {
   const [filter,  setFilter]  = useState("ALL");
   const [sortBy,  setSortBy]  = useState("confidence");
   const [scanned, setScanned] = useState(false);
@@ -60,10 +60,12 @@ export default function ScreenerPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Signal Filter</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>NSE Stock Screener</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Signal Filter</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>NSE Stock Screener</h1>
+        </div>
+      )}
 
       {/* Controls + stat tiles */}
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr 1fr", gap: 10, alignItems: "stretch" }}>

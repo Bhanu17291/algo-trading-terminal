@@ -15,7 +15,7 @@ function getSentiment(title) {
   return { label: "NEUTRAL", color: T.amber };
 }
 
-export default function NewsPage() {
+export default function NewsPage({ showHeader = true }) {
   const [news,    setNews]    = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
@@ -48,10 +48,12 @@ export default function NewsPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Market Intelligence</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Market News Feed</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Market Intelligence</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Market News Feed</h1>
+        </div>
+      )}
 
       {/* Stat tiles + filter */}
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr 1fr", gap: 10 }}>

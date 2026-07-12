@@ -28,7 +28,7 @@ const REF = [
   { title: "BB Position",    color: T.purple, desc: "0 = at lower band · 1 = at upper band · ML mean-reversion feature" },
 ];
 
-export default function IndicatorsPage({ indicators }) {
+export default function IndicatorsPage({ indicators, showHeader = true }) {
   const latest = indicators?.[indicators.length - 1];
   const rsi    = latest?.rsi;
   const rsiColor = rsi > 70 ? T.red : rsi < 30 ? T.green : T.blue;
@@ -41,10 +41,12 @@ export default function IndicatorsPage({ indicators }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
       {/* Page header */}
-      <div>
-        <div style={{ fontSize: 10, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>Analysis</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Indicators</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 10, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>Analysis</div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Indicators</h1>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>

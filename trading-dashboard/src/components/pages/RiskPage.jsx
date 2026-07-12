@@ -42,7 +42,7 @@ const PROFILES = {
   MACRO:  { capital: 100000, riskPct: 1.5, entry: 23000, stop: 22655 },
 };
 
-export default function RiskPage({ stats, trades, compare }) {
+export default function RiskPage({ stats, trades, compare, showHeader = true }) {
   const [profile,    setProfile]    = useState("CUSTOM");
   const [capital,    setCapital]    = useState(100000);
   const [riskPct,    setRiskPct]    = useState(2);
@@ -90,10 +90,12 @@ export default function RiskPage({ stats, trades, compare }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Risk Management</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Risk Calculator</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Risk Management</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Risk Calculator</h1>
+        </div>
+      )}
 
       {/* Profile selector + result tiles */}
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr 1fr", gap: 10, alignItems: "stretch" }}>

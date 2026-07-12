@@ -26,7 +26,7 @@ function buildDayPnl(trades) {
   return map;
 }
 
-export default function HeatmapPage({ trades, compare }) {
+export default function HeatmapPage({ trades, compare, showHeader = true }) {
   const [tab, setTab] = useState("QUANT");
 
   const tabTrades = { STRATEGY: trades, QUANT: compare?.quant_trades, MACRO: compare?.macro_trades };
@@ -55,10 +55,12 @@ export default function HeatmapPage({ trades, compare }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Returns Analysis</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Monthly Returns Heatmap</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Returns Analysis</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Monthly Returns Heatmap</h1>
+        </div>
+      )}
 
       {/* Tab + stat tiles */}
       <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr 1fr 1fr", gap: 10, alignItems: "stretch" }}>

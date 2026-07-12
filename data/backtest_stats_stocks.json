@@ -1,0 +1,41 @@
+{
+  "rebalance_5d": {
+    "label": "Realistic costs, rebalance every 5 days",
+    "initial_capital": 100000,
+    "final_value": 94799.71,
+    "total_return_pct": -5.2,
+    "cagr_pct": -6.21,
+    "sharpe": -0.28,
+    "max_drawdown_pct": 16.8,
+    "total_trades": 542,
+    "win_rate_pct": 51.7,
+    "wins": 140,
+    "losses": 131
+  },
+  "rebalance_10d": {
+    "label": "Realistic costs, rebalance every 10 days",
+    "initial_capital": 100000,
+    "final_value": 105364.43,
+    "total_return_pct": 5.36,
+    "cagr_pct": 6.47,
+    "sharpe": 0.44,
+    "max_drawdown_pct": 14.66,
+    "total_trades": 394,
+    "win_rate_pct": 54.8,
+    "wins": 108,
+    "losses": 89
+  },
+  "zero_costs_diagnostic": {
+    "label": "DIAGNOSTIC ONLY \u2014 zero costs (not a real strategy)",
+    "initial_capital": 100000,
+    "final_value": 100177.42,
+    "total_return_pct": 0.18,
+    "cagr_pct": 0.21,
+    "sharpe": 0.1,
+    "max_drawdown_pct": 16.25,
+    "total_trades": 544,
+    "win_rate_pct": 52.9,
+    "wins": 144,
+    "losses": 128
+  }
+}

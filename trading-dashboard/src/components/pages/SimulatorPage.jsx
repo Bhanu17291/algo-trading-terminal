@@ -21,7 +21,7 @@ function Tile({ label, value, color, sub }) {
 
 const PRESETS = [50000, 100000, 250000, 500000, 1000000];
 
-export default function SimulatorPage({ portfolio, compare }) {
+export default function SimulatorPage({ portfolio, compare, showHeader = true }) {
   const [capital,  setCapital]  = useState(100000);
   const [inputVal, setInputVal] = useState("100000");
   const [mode,     setMode]     = useState("ALL");
@@ -55,10 +55,12 @@ export default function SimulatorPage({ portfolio, compare }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Portfolio Scaling</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Capital Simulator</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Portfolio Scaling</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Capital Simulator</h1>
+        </div>
+      )}
 
       {/* Top row: input + result tiles */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, alignItems: "stretch" }}>

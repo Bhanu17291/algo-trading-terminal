@@ -119,7 +119,7 @@ const CONCEPTS = [
   { title: "Model Confidence",color: T.green,  desc: "When ML confidence drops below 50%, signal is weak. Uncertain signals = higher execution risk." },
 ];
 
-export default function PsychPage({ psych, compare }) {
+export default function PsychPage({ psych, compare, showHeader = true }) {
   const quantPsych = clientPsych(compare?.quant_trades, compare?.quant_portfolio);
   const macroPsych = clientPsych(compare?.macro_trades, compare?.macro_portfolio);
 
@@ -130,10 +130,12 @@ export default function PsychPage({ psych, compare }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 10, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>Behavioural Analysis</div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Psychology Monitor</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 10, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 4 }}>Behavioural Analysis</div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Psychology Monitor</h1>
+        </div>
+      )}
 
       {/* Top stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>

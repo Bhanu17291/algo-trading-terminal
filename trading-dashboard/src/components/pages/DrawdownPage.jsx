@@ -37,7 +37,7 @@ function Tile({ label, value, color, sub }) {
   );
 }
 
-export default function DrawdownPage({ portfolio, trades, compare }) {
+export default function DrawdownPage({ portfolio, trades, compare, showHeader = true }) {
   const stratDD = calcDrawdown(portfolio);
   const quantDD = calcDrawdown(compare?.quant_portfolio);
   const macroDD = calcDrawdown(compare?.macro_portfolio);
@@ -74,10 +74,12 @@ export default function DrawdownPage({ portfolio, trades, compare }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", minHeight: 0 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Risk Analysis</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Drawdown</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Risk Analysis</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>Drawdown</h1>
+        </div>
+      )}
 
       {/* 6 stat tiles */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8 }}>

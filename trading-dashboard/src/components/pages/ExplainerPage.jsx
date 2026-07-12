@@ -16,7 +16,7 @@ function Tile({ label, value, color, sub }) {
   );
 }
 
-export default function ExplainerPage({ shap, signal }) {
+export default function ExplainerPage({ shap, signal, showHeader = true }) {
   const latest   = shap?.latest_signal_explanation?.slice(0, 12) ?? [];
   const global_  = shap?.global_importance?.slice(0, 10) ?? [];
   const predClass = shap?.predicted_class;
@@ -42,10 +42,12 @@ export default function ExplainerPage({ shap, signal }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
       {/* Header */}
-      <div>
-        <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Machine Learning</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>ML Explainer — SHAP Analysis</h1>
-      </div>
+      {showHeader && (
+        <div>
+          <div style={{ fontSize: 9, color: T.textFaint, fontFamily: mono, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>Machine Learning</div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: T.paleGreen, fontFamily: T.fontSans, margin: 0 }}>ML Explainer — SHAP Analysis</h1>
+        </div>
+      )}
 
       {/* Stat tiles */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>

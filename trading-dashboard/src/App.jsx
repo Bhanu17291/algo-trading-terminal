@@ -5,6 +5,11 @@
  *  1. useBackendWake() — gates ALL data fetching behind a health-check ping
  *  2. WakeScreen — shown while backend cold-starts, with progress + retry
  *  3. fetchWithRetry — 3-attempt retry with 2 s delay for every API call
+ *  4. Consolidated 9 separate pages into 4 tabbed pages (Signal & Model,
+ *     Performance Lab, Market Scanner, Risk & Psychology) — see PageLayout.jsx
+ *     for the updated 6-item sidebar. Retired the standalone Market page
+ *     since its content (NSEI open/closed + IST clock) is already shown
+ *     live in the top bar.
  */
 
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -18,20 +23,15 @@ import { useBackendWake } from "./hooks/useBackendWake";
 import LandingPage    from "./components/pages/LandingPage";
 import Dashboard      from "./components/pages/Dashboard";
 import TradePage      from "./components/pages/TradePage";
-import IndicatorsPage from "./components/pages/IndicatorsPage";
-import PsychPage      from "./components/pages/PsychPage";
-import MarketPage     from "./components/pages/MarketPage";
-import ExplainerPage  from "./components/pages/ExplainerPage";
-import DrawdownPage   from "./components/pages/DrawdownPage";
-import BacktestPage   from "./components/pages/BacktestPage";
-import SimulatorPage  from "./components/pages/SimulatorPage";
-import RiskPage       from "./components/pages/RiskPage";
-import HeatmapPage    from "./components/pages/HeatmapPage";
-import ScreenerPage   from "./components/pages/ScreenerPage";
-import NewsPage       from "./components/pages/NewsPage";
 import ClientsPage    from "./components/pages/ClientsPage";
 import OnboardingQuestionnaire from "./components/pages/OnboardingQuestionnaire";
 import StrategiesPage from "./components/pages/StrategiesPage";
+
+// Merged tabbed pages (each internally imports its constituent sub-pages)
+import SignalModelPage      from "./components/pages/SignalModelPage";
+import PerformanceLabPage   from "./components/pages/PerformanceLabPage";
+import MarketScannerPage    from "./components/pages/MarketScannerPage";
+import RiskPsychologyPage   from "./components/pages/RiskPsychologyPage";
 
 const API = "https://algo-trading-terminal.onrender.com";
 
@@ -164,21 +164,21 @@ export default function App() {
           fetch rather than going through AppWrapper's shared data-loading */}
       <Route path="/strategies" element={<WakeGate><StrategiesPage /></WakeGate>} />
 
-      {/* All dashboard pages — gated behind WakeGate */}
+      {/* Core pages */}
       <Route path="/dashboard"  element={<WakeGate><AppWrapper Component={Dashboard} /></WakeGate>} />
       <Route path="/trades"     element={<WakeGate><AppWrapper Component={TradePage} /></WakeGate>} />
-      <Route path="/indicators" element={<WakeGate><AppWrapper Component={IndicatorsPage} /></WakeGate>} />
-      <Route path="/psychology" element={<WakeGate><AppWrapper Component={PsychPage} /></WakeGate>} />
-      <Route path="/market"     element={<WakeGate><AppWrapper Component={MarketPage} /></WakeGate>} />
-      <Route path="/explainer"  element={<WakeGate><AppWrapper Component={ExplainerPage} /></WakeGate>} />
-      <Route path="/drawdown"   element={<WakeGate><AppWrapper Component={DrawdownPage} /></WakeGate>} />
-      <Route path="/backtest"   element={<WakeGate><AppWrapper Component={BacktestPage} /></WakeGate>} />
-      <Route path="/simulator"  element={<WakeGate><AppWrapper Component={SimulatorPage} /></WakeGate>} />
-      <Route path="/risk"       element={<WakeGate><AppWrapper Component={RiskPage} /></WakeGate>} />
-      <Route path="/heatmap"    element={<WakeGate><AppWrapper Component={HeatmapPage} /></WakeGate>} />
-      <Route path="/screener"   element={<WakeGate><AppWrapper Component={ScreenerPage} /></WakeGate>} />
-      <Route path="/news"       element={<WakeGate><AppWrapper Component={NewsPage} /></WakeGate>} />
       <Route path="/clients"    element={<WakeGate><AppWrapper Component={ClientsPage} /></WakeGate>} />
+
+      {/* Consolidated tabbed pages — replace the old 9 separate routes:
+          /signal-model    = Indicators + ML Explain
+          /performance-lab = Backtest + Drawdown + Simulator
+          /market-scanner  = Heatmap + Screener + News
+          /risk-psychology = Risk Calc + Psychology
+          (old /market route retired — its content is already in the top bar) */}
+      <Route path="/signal-model"    element={<WakeGate><AppWrapper Component={SignalModelPage} /></WakeGate>} />
+      <Route path="/performance-lab" element={<WakeGate><AppWrapper Component={PerformanceLabPage} /></WakeGate>} />
+      <Route path="/market-scanner"  element={<WakeGate><AppWrapper Component={MarketScannerPage} /></WakeGate>} />
+      <Route path="/risk-psychology" element={<WakeGate><AppWrapper Component={RiskPsychologyPage} /></WakeGate>} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />

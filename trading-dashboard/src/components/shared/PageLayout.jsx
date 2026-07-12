@@ -4,21 +4,16 @@ import { T } from "../../config/tokens";
 import { fetchJson } from "../../config/api";
 import { SignalBadge } from "./Badge";
 
+// Consolidated from 14 items down to 6 — related pages merged into tabbed
+// destinations (Signal & Model, Performance Lab, Market Scanner, Risk & Psychology)
 const NAV = [
-  { path: "/dashboard",  icon: "◈", label: "Dashboard"   },
-  { path: "/trades",     icon: "⇄", label: "Trade Log"   },
-  { path: "/indicators", icon: "∿", label: "Indicators"  },
-  { path: "/psychology", icon: "◎", label: "Psychology"  },
-  { path: "/market",     icon: "◉", label: "Market"      },
-  { path: "/explainer",  icon: "⬡", label: "ML Explain"  },
-  { path: "/drawdown",   icon: "↘", label: "Drawdown"    },
-  { path: "/backtest",   icon: "⟳", label: "Backtest"    },
-  { path: "/simulator",  icon: "∑", label: "Simulator"   },
-  { path: "/risk",       icon: "⊕", label: "Risk Calc"   },
-  { path: "/heatmap",    icon: "▦", label: "Heatmap"     },
-  { path: "/screener",   icon: "◐", label: "Screener"    },
-  { path: "/news",       icon: "☰", label: "News"        },
-  { path: "/clients",    icon: "⚖", label: "Clients"     },
+  { path: "/dashboard",         icon: "◈", label: "Dashboard"        },
+  { path: "/trades",            icon: "⇄", label: "Trade Log"        },
+  { path: "/signal-model",      icon: "∿", label: "Signal & Model"   },
+  { path: "/performance-lab",   icon: "⟳", label: "Performance Lab"  },
+  { path: "/market-scanner",    icon: "▦", label: "Market Scanner"   },
+  { path: "/risk-psychology",   icon: "⊕", label: "Risk & Psychology"},
+  { path: "/clients",           icon: "⚖", label: "Clients"          },
 ];
 
 function NavItem({ item, active, onClick }) {
