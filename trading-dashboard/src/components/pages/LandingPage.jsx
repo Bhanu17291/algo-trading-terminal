@@ -90,12 +90,17 @@ const STRATEGY_ITEMS = [
 export default function LandingPage() {
   const navigate = useNavigate();
   const [market, setMarket] = useState(null);
+  const [signal, setSignal] = useState(null); // { action: "BUY"|"HOLD", confidence: 0-1 }
   const [hovNav, setHovNav] = useState(null);
   const [hovFork, setHovFork] = useState(null); // "signal" | "strategy" | null
   const [hovItem, setHovItem] = useState(null); // "signal-0" etc.
 
   useEffect(() => {
     fetchJson("/market-status").then(setMarket).catch(() => {});
+    // Point this at your actual latest-signal endpoint (e.g. /signal/latest).
+    // Falls back to a neutral placeholder if the route isn't available yet,
+    // so the card never shows broken or fabricated data.
+    fetchJson("/signal/latest").then(setSignal).catch(() => setSignal(null));
   }, []);
 
   useEffect(() => {
@@ -260,7 +265,7 @@ export default function LandingPage() {
     },
   };
 
-  const renderForkCard = (key, accent, eyebrow, title, desc, items, ctaLabel, ctaPath) => (
+  const renderForkCard = (key, accent, eyebrow, title, desc, items, ctaLabel, ctaPath, preview) => (
     <div
       className="hover-lift"
       style={s.forkCard(accent, hovFork === key)}
@@ -273,6 +278,7 @@ export default function LandingPage() {
       </div>
       <div style={s.forkTitle}>{title}</div>
       <div style={s.forkDesc}>{desc}</div>
+      {preview}
 
       <div style={{ flex: 1 }}>
         {items.map((item, i) => {
@@ -289,7 +295,15 @@ export default function LandingPage() {
                 <span style={{ fontSize: 11, color: accent }}>{item.icon}</span>
                 <span style={{ fontSize: 10, fontFamily: T.mono, color: hovItem === id ? T.pale : T.text }}>{item.label}</span>
               </div>
-              <span style={{ fontSize: 8, fontFamily: T.mono, color: T.textFaint }}>{item.sub}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 8, fontFamily: T.mono, color: T.textFaint }}>{item.sub}</span>
+                <span style={{
+                  fontSize: 9, color: accent, fontFamily: T.mono,
+                  opacity: hovItem === id ? 1 : 0,
+                  transform: hovItem === id ? "translateX(0)" : "translateX(-4px)",
+                  transition: "opacity 0.15s, transform 0.15s",
+                }}>→</span>
+              </div>
             </div>
           );
         })}
@@ -415,13 +429,29 @@ export default function LandingPage() {
         </div>
         <div style={s.forkGrid}>
           {renderForkCard(
-            "signal", T.green, "Signal Engine", "Predict the pattern",
-            "A daily BUY/HOLD signal on the NSEI from a 27-feature ensemble model, with full SHAP explainability. For understanding what the market is likely to do next.",
-            SIGNAL_ITEMS, "Explore signals", "/dashboard"
+            "signal", T.green, "Signal Engine", "See the signal, not the noise",
+            "A daily BUY/HOLD call on the NSEI from a 27-feature ensemble, with full SHAP explainability behind every call — so you know why, not just what.",
+            SIGNAL_ITEMS, "Explore signals", "/onboarding",
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "8px 12px", marginBottom: 14, borderRadius: 6,
+              background: "rgba(34,197,94,0.06)", border: `1px solid rgba(34,197,94,0.15)`,
+            }}>
+              <span style={{ fontSize: 8.5, fontFamily: T.mono, color: T.textFaint, letterSpacing: "1px", textTransform: "uppercase" }}>
+                Today's call
+              </span>
+              {signal ? (
+                <span style={{ fontSize: 10.5, fontFamily: T.mono, fontWeight: 700, color: signal.action === "BUY" ? T.green : T.amber }}>
+                  {signal.action} · {Math.round((signal.confidence ?? 0) * 100)}%
+                </span>
+              ) : (
+                <span style={{ fontSize: 9, fontFamily: T.mono, color: T.textFaint }}>— live on launch —</span>
+              )}
+            </div>
           )}
           {renderForkCard(
-            "strategy", T.blue, "Strategy Lab", "Trade the signal",
-            "Turn the signal into a position. QUANT and MACRO profiles today, backtested and risk-sized — with more strategies shipping over time.",
+            "strategy", T.blue, "Strategy Lab", "Turn the call into a position",
+            "QUANT and MACRO profiles run the same signal at different risk levels — backtested and position-sized, with more strategies shipping over time.",
             STRATEGY_ITEMS, "Explore strategies", "/clients"
           )}
         </div>
@@ -442,7 +472,7 @@ export default function LandingPage() {
       <div style={s.footer}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ fontSize: 8, color: "rgba(231,240,234,0.18)", fontFamily: T.mono, letterSpacing: "1.5px" }}>
-            © 2025 ALGOTERMINAL · BUILT BY BHANU
+            © {new Date().getFullYear()} ALGOTERMINAL · BUILT BY BHANU
           </div>
           <div style={s.footerTag}>NSEI QUANTITATIVE INTELLIGENCE</div>
         </div>
